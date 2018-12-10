@@ -4,15 +4,226 @@
     <meta charset="UTF-8">
     <title>Hello World!</title>
     <link rel="stylesheet" href="bulma.min.css">
+    <style type="text/css">
+        .axis path, .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;  /* Round any decimal pixels so it'll render nicely */
+        }
+
+        .tick text{
+            font-size: 12px;
+        }
+
+        .tick line{
+            opacity: 0.2;
+        }
+    </style>
 </head>
 <body>
-<h1>Hello World!</h1>
-We are using node <script>document.write(process.versions.node)</script>,
-Chrome <script>document.write(process.versions.chrome)</script>,
-Electron <script>document.write(process.versions.electron)</script>,
-and d3 <script>
+<section class="section">
+<div class="container">
+<button class="button is-primary" id="save-to-file-btn" onclick="saveToFile()">Сохранить в файл</button>
+<button class="button is-primary" id="load-from-file-btn" onclick="loadFromFile()">Загрузить из файла</button>
+</div>
+<div class="container" id="d3"></div>
+</section>
+<script>
     const d3 = require("d3");
-    document.write(d3.version);
+    const fs = require('fs');
+
+    const width = window.innerWidth*0.7,
+          height = window.innerHeight*0.7,
+          margin = { top: 40, right: 20, bottom: 20, left: 40 },
+          xLeftBoundary = -100,
+          xRightBoundary = 100,
+          yBottomBoundary = -100,
+          yTopBoundary = 100,
+          radius = 3;
+
+    const svg = d3.select("#d3").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    let pointsArray = [];
+
+    const xScale = d3.scaleLinear()
+        .domain([ xLeftBoundary, xRightBoundary ])
+        .range([margin.left, width - margin.right]);
+
+    const yScale = d3.scaleLinear()
+        .domain([ yBottomBoundary, yTopBoundary ])
+        .range([height - margin.bottom, margin.top]); //inverted to invert screen y axis
+
+    // Add a X and Y Axis
+    const xAxis = d3.axisBottom(xScale)
+        .tickSizeInner(-(height-margin.top-margin.bottom))
+        .tickSizeOuter(0)
+        .tickPadding(10);
+
+    const yAxis = d3.axisLeft(yScale)
+        .tickSizeInner(-(width-margin.left-margin.right))
+        .tickSizeOuter(0)
+        .tickPadding(10);
+
+    // Adds X-Axis as a 'g' element
+    svg.append("g")
+        .attr("class", "axis")  // Give class so we can style it
+        .attr("transform", "translate(" + [0, height - margin.bottom] + ")")  // Translate just moves it down into position (or will be on top)
+        .call(xAxis);
+
+    // Adds Y-Axis as a 'g' element
+    svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(" + [margin.left, 0] + ")")
+        .call(yAxis);
+
+    const circleAttrs = {
+        cx: point => xScale(point.x),
+        cy: point => yScale(point.y),
+        r: radius
+    };
+
+    function drawPoints(drawLines){
+        svg.selectAll("circle")  // For new circle, go through the update process
+            .data(pointsArray)
+            .enter()
+            .append("circle")
+            .attr("cx", circleAttrs.cx) // Get attributes from circleAttrs var
+            .attr("cy", circleAttrs.cy)
+            .attr("r", circleAttrs.r)
+            .on("mouseover", handleMouseOverOnPoint)
+            .on("mouseout", handleMouseOutOnPoint)
+            .on("click", handleClickOnPoint);
+        if(drawLines === true && pointsArray.length >= 3){
+            for(let i=0; i<pointsArray.length - 1; i++){
+                const nowPoint = pointsArray[i];
+                const nextPoint = pointsArray[i+1];
+                svg.append("line")          // attach a line
+                    .style("stroke", "black")  // colour the line
+                    .attr("class", "graphline")
+                    .attr("x1", xScale(nowPoint.x))     // x position of the first end of the line
+                    .attr("y1", yScale(nowPoint.y))      // y position of the first end of the line
+                    .attr("x2", xScale(nextPoint.x))     // x position of the second end of the line
+                    .attr("y2", yScale(nextPoint.y));    // y position of the second end of the line
+            }
+            const lastPoint = pointsArray[pointsArray.length-1];
+            const firstPoint = pointsArray[0];
+            svg.append("line")          // attach a line
+                .style("stroke", "black")  // colour the line
+                .attr("class", "graphline")
+                .attr("x1", xScale(lastPoint.x))     // x position of the first end of the line
+                .attr("y1", yScale(lastPoint.y))      // y position of the first end of the line
+                .attr("x2", xScale(firstPoint.x))     // x position of the second end of the line
+                .attr("y2", yScale(firstPoint.y));    // y position of the second end of the line
+        }
+    }
+
+    // On Click, we want to add data to the array and chart
+    svg.on("click", function() {
+        const coords = d3.mouse(this);
+
+        // Normally we go from data to pixels, but here we're doing pixels to data
+        const newPoint= {
+            x: Math.round( xScale.invert(coords[0])),  // Takes the pixel number to convert to number
+            y: Math.round( yScale.invert(coords[1]))
+        };
+
+        pointsArray.push(newPoint);   // Push data to our array
+
+        drawPoints();
+
+        if(pointsArray.length >= 2) {  // draw a line between the new point and the last point
+            const prevPoint = pointsArray[pointsArray.length - 2];
+            svg.append("line")          // attach a line
+                .style("stroke", "black")  // colour the line
+                .attr("class", "graphline")
+                .attr("x1", xScale(prevPoint.x))     // x position of the first end of the line
+                .attr("y1", yScale(prevPoint.y))      // y position of the first end of the line
+                .attr("x2", xScale(newPoint.x))     // x position of the second end of the line
+                .attr("y2", yScale(newPoint.y));    // y position of the second end of the line
+        }
+    });
+
+    function handleClickOnPoint(point) {
+        d3.event.stopPropagation();
+        if(pointsArray.length >= 3 && point==pointsArray[0]) {
+            const lastPoint = pointsArray[pointsArray.length - 1];
+            const firstPoint = pointsArray[0];
+            svg.append("line")          // attach a line
+                .style("stroke", "black")  // colour the line
+                .attr("class", "graphline")
+                .attr("x1", xScale(lastPoint.x))     // x position of the first end of the line
+                .attr("y1", yScale(lastPoint.y))      // y position of the first end of the line
+                .attr("x2", xScale(firstPoint.x))     // x position of the second end of the line
+                .attr("y2", yScale(firstPoint.y));    // y position of the second end of the line
+        }
+    }
+
+    function getPointStringId(point) {
+        return "t" + String(point.x).replace(".","-") + "-" + String(point.y).replace(".","-");
+    }
+
+    // Create Event Handlers for mouse
+    function handleMouseOverOnPoint(point) {  // Add interactivity
+
+        // Use D3 to select element, change color and size
+        d3.select(this)
+            .attr("fill", "orange")
+            .attr("r", radius * 2);
+
+        // Specify where to put label of text
+        svg.append("text")
+            .attr("id", getPointStringId(point))  // Create an id for text so we can select it later for removing on mouseout
+            .attr("x", xScale(point.x) - 30 )
+            .attr("y", yScale(point.y) - 15 )
+            .text( point.x + ", " + point.y );  // Value of the text
+    }
+
+    function handleMouseOutOnPoint(point) {
+        // Use D3 to select element, change color back to normal
+        d3.select(this)
+            .attr("fill", "black")
+            .attr("r", radius);
+
+        // Select text by id and then remove
+        d3.select("#"+getPointStringId(point)).remove();  // Remove text location
+    }
+
+    function saveToFile() {
+        let outputString = "";
+        for(let i=0; i<pointsArray.length; i++){
+            const point = pointsArray[i];
+            outputString += point.x + " " + point.y + "\n";
+        }
+        fs.writeFile("src_data.txt", outputString, function(err) {
+            if(err) {
+                return console.log(err);
+            }
+
+            console.log("The file was saved!");
+        });
+    }
+
+    function loadFromFile() {
+        const contents = fs.readFileSync('src_data.txt', 'utf8');
+        const lines = contents.split("\n");
+        let newPointsArray = [];
+        for(let i=0; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const x = parseFloat(numbersAsString[0]);
+            const y = parseFloat(numbersAsString[1]);
+            if(isFinite(x) && isFinite(y)) {
+                newPointsArray.push({x: x, y: y});
+            }
+        }
+        pointsArray = newPointsArray;
+        d3.selectAll(".graphline").remove();
+        d3.selectAll("circle").remove();
+
+        drawPoints(true);
+    }
 </script>
 </body>
 </html>
