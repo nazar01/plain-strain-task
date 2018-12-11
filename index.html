@@ -25,80 +25,84 @@
 <div class="container">
 <button class="button is-primary" id="save-to-file-btn" onclick="saveToFile()">Сохранить в файл</button>
 <button class="button is-primary" id="load-from-file-btn" onclick="loadFromFile()">Загрузить из файла</button>
+<button class="button is-warning" id="clear-btn" onclick="clearGraph()">Очистить график</button>
 </div>
-<div class="container" id="d3"></div>
+<div class="container" id="d3"></div> <!-- container for our svg graph -->
 </section>
 <script>
-    const d3 = require("d3");
-    const fs = require('fs');
+    const d3 = require("d3");  //library for graph
+    const fs = require('fs');  //API for filesystem operations from node.js
 
-    const width = window.innerWidth*0.7,
-          height = window.innerHeight*0.7,
-          margin = { top: 40, right: 20, bottom: 20, left: 40 },
+    const svgWidth = window.innerWidth*0.7,
+          svgHeight = window.innerHeight*0.7,
+          svgMargin = { top: 40, right: 20, bottom: 20, left: 40 },
           xLeftBoundary = -100,
           xRightBoundary = 100,
           yBottomBoundary = -100,
           yTopBoundary = 100,
-          radius = 3;
+          pointRadius = 3;
 
-    const svg = d3.select("#d3").append("svg")
-        .attr("width", width)
-        .attr("height", height);
+    const svg = d3.select("#d3")    //selecting our container from html
+                  .append("svg")    //this svg will contain our graph
+                  .attr("width", svgWidth)  //setting width and height attributes of svg
+                  .attr("height", svgHeight)
+                  .on("click", clickOnSvgHandler);  //setting click handler
 
-    let pointsArray = [];
+    let pointsArray = [];  //our points, like [ {x:1.5, y:3}, {x:-2, y:0} ]
 
-    const xScale = d3.scaleLinear()
-        .domain([ xLeftBoundary, xRightBoundary ])
-        .range([margin.left, width - margin.right]);
+    const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
+        .domain([ xLeftBoundary, xRightBoundary ])    //boundaries of points' x coordinates
+        .range([svgMargin.left, svgWidth - svgMargin.right]);   //boundaries of svg's x coordinates
 
     const yScale = d3.scaleLinear()
         .domain([ yBottomBoundary, yTopBoundary ])
-        .range([height - margin.bottom, margin.top]); //inverted to invert screen y axis
+        .range([svgHeight - svgMargin.bottom, svgMargin.top]); //inverted to invert screen y axis
 
-    // Add a X and Y Axis
-    const xAxis = d3.axisBottom(xScale)
-        .tickSizeInner(-(height-margin.top-margin.bottom))
-        .tickSizeOuter(0)
-        .tickPadding(10);
+    initAxes();
 
-    const yAxis = d3.axisLeft(yScale)
-        .tickSizeInner(-(width-margin.left-margin.right))
-        .tickSizeOuter(0)
-        .tickPadding(10);
+    function initAxes(){
+        // Add an X and an Y Axis
+        const xAxis = d3.axisBottom(xScale)
+            .tickSizeInner(-(svgHeight-svgMargin.top-svgMargin.bottom)) //grid lines
+            .tickSizeOuter(0)
+            .tickPadding(10);
 
-    // Adds X-Axis as a 'g' element
-    svg.append("g")
-        .attr("class", "axis")  // Give class so we can style it
-        .attr("transform", "translate(" + [0, height - margin.bottom] + ")")  // Translate just moves it down into position (or will be on top)
-        .call(xAxis);
+        const yAxis = d3.axisLeft(yScale)
+            .tickSizeInner(-(svgWidth-svgMargin.left-svgMargin.right))  //grid lines
+            .tickSizeOuter(0)
+            .tickPadding(10);
 
-    // Adds Y-Axis as a 'g' element
-    svg.append("g")
-        .attr("class", "axis")
-        .attr("transform", "translate(" + [margin.left, 0] + ")")
-        .call(yAxis);
+        // Adds X-Axis to svg as a 'g' element (group)
+        svg.append("g")
+            .attr("class", "axis")  // Give class so we can style it
+            .attr("transform", "translate(" + [0, svgHeight - svgMargin.bottom] + ")")  // Translate just moves it down into position (or will be on top)
+            .call(xAxis);
 
-    const circleAttrs = {
-        cx: point => xScale(point.x),
-        cy: point => yScale(point.y),
-        r: radius
-    };
+        // Adds Y-Axis to svg as a 'g' element (group)
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(" + [svgMargin.left, 0] + ")")
+            .call(yAxis);
+    }
 
-    function drawPoints(drawLines){
-        svg.selectAll("circle")  // For new circle, go through the update process
+    function drawPoints(drawLines){  //if drawLines===true and we have at least 3 points, we draw lines around them
+        d3.selectAll("circle").remove(); //delete all old points
+
+        svg.selectAll("circle")
             .data(pointsArray)
-            .enter()
+            .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
             .append("circle")
-            .attr("cx", circleAttrs.cx) // Get attributes from circleAttrs var
-            .attr("cy", circleAttrs.cy)
-            .attr("r", circleAttrs.r)
-            .on("mouseover", handleMouseOverOnPoint)
-            .on("mouseout", handleMouseOutOnPoint)
-            .on("click", handleClickOnPoint);
+            .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+            .attr("cy", point => yScale(point.y))
+            .attr("r", pointRadius)
+            .on("mouseover", mouseOverPointHandler) //setting event handlers
+            .on("mouseout", mouseOutPointHandler)
+            .on("click", clickOnPointHandler);
         if(drawLines === true && pointsArray.length >= 3){
-            for(let i=0; i<pointsArray.length - 1; i++){
+            d3.selectAll(".graphline").remove();  //delete all old lines
+            for(let i = 0; i < pointsArray.length; i++) {
                 const nowPoint = pointsArray[i];
-                const nextPoint = pointsArray[i+1];
+                const nextPoint = (i === pointsArray.length - 1) ? pointsArray[0] : pointsArray[i+1];  //ternary operator
                 svg.append("line")          // attach a line
                     .style("stroke", "black")  // colour the line
                     .attr("class", "graphline")
@@ -107,20 +111,11 @@
                     .attr("x2", xScale(nextPoint.x))     // x position of the second end of the line
                     .attr("y2", yScale(nextPoint.y));    // y position of the second end of the line
             }
-            const lastPoint = pointsArray[pointsArray.length-1];
-            const firstPoint = pointsArray[0];
-            svg.append("line")          // attach a line
-                .style("stroke", "black")  // colour the line
-                .attr("class", "graphline")
-                .attr("x1", xScale(lastPoint.x))     // x position of the first end of the line
-                .attr("y1", yScale(lastPoint.y))      // y position of the first end of the line
-                .attr("x2", xScale(firstPoint.x))     // x position of the second end of the line
-                .attr("y2", yScale(firstPoint.y));    // y position of the second end of the line
         }
     }
 
-    // On Click, we want to add data to the array and chart
-    svg.on("click", function() {
+    // On click, we want to add data to the array and chart
+    function clickOnSvgHandler(){
         const coords = d3.mouse(this);
 
         // Normally we go from data to pixels, but here we're doing pixels to data
@@ -143,11 +138,11 @@
                 .attr("x2", xScale(newPoint.x))     // x position of the second end of the line
                 .attr("y2", yScale(newPoint.y));    // y position of the second end of the line
         }
-    });
+    }
 
-    function handleClickOnPoint(point) {
-        d3.event.stopPropagation();
-        if(pointsArray.length >= 3 && point==pointsArray[0]) {
+    function clickOnPointHandler(point) { //creating a line between the last point and the first point
+        d3.event.stopPropagation();  //otherwise svg will receive click and create a new point
+        if(pointsArray.length >= 3) {
             const lastPoint = pointsArray[pointsArray.length - 1];
             const firstPoint = pointsArray[0];
             svg.append("line")          // attach a line
@@ -164,13 +159,12 @@
         return "t" + String(point.x).replace(".","-") + "-" + String(point.y).replace(".","-");
     }
 
-    // Create Event Handlers for mouse
-    function handleMouseOverOnPoint(point) {  // Add interactivity
+    function mouseOverPointHandler(point) {  // Add interactivity
 
         // Use D3 to select element, change color and size
         d3.select(this)
             .attr("fill", "orange")
-            .attr("r", radius * 2);
+            .attr("r", pointRadius * 2);
 
         // Specify where to put label of text
         svg.append("text")
@@ -180,11 +174,11 @@
             .text( point.x + ", " + point.y );  // Value of the text
     }
 
-    function handleMouseOutOnPoint(point) {
+    function mouseOutPointHandler(point) {
         // Use D3 to select element, change color back to normal
         d3.select(this)
             .attr("fill", "black")
-            .attr("r", radius);
+            .attr("r", pointRadius);
 
         // Select text by id and then remove
         d3.select("#"+getPointStringId(point)).remove();  // Remove text location
@@ -194,14 +188,15 @@
         let outputString = "";
         for(let i=0; i<pointsArray.length; i++){
             const point = pointsArray[i];
-            outputString += point.x + " " + point.y + "\n";
+            outputString += point.x + " " + point.y;
+            if(i !== pointsArray.length - 1)
+                outputString += "\n";
         }
         fs.writeFile("src_data.txt", outputString, function(err) {
-            if(err) {
-                return console.log(err);
-            }
-
-            console.log("The file was saved!");
+            if(err)
+                console.log(err);
+            else
+                console.log("The file was saved!");
         });
     }
 
@@ -219,10 +214,13 @@
             }
         }
         pointsArray = newPointsArray;
-        d3.selectAll(".graphline").remove();
-        d3.selectAll("circle").remove();
+        drawPoints(true); //draw new points and lines
+    }
 
-        drawPoints(true);
+    function clearGraph() {
+        pointsArray = [];
+        d3.selectAll("circle").remove();
+        d3.selectAll(".graphline").remove();
     }
 </script>
 </body>
