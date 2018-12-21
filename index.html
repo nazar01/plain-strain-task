@@ -46,9 +46,13 @@
                   .append("svg")    //this svg will contain our graph
                   .attr("width", svgWidth)  //setting width and height attributes of svg
                   .attr("height", svgHeight)
-                  .on("click", clickOnSvgHandler);  //setting click handler
+                  .on("click", clickOnSvgHandler)  //setting click handler
+                  .on("contextmenu", rightClickOnSvgHandler);
 
     let pointsArray = [];  //our points, like [ {x:1.5, y:3}, {x:-2, y:0} ]
+    let offsetPointsArray = [];
+    let selectedPoint = null;
+    let selectedOffsetPoint = null;
 
     const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
         .domain([ xLeftBoundary, xRightBoundary ])    //boundaries of points' x coordinates
@@ -89,15 +93,18 @@
         d3.selectAll("circle").remove(); //delete all old points
 
         svg.selectAll("circle")
-            .data(pointsArray)
-            .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
-            .append("circle")
-            .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
-            .attr("cy", point => yScale(point.y))
-            .attr("r", pointRadius)
-            .on("mouseover", mouseOverPointHandler) //setting event handlers
-            .on("mouseout", mouseOutPointHandler)
-            .on("click", clickOnPointHandler);
+           .data(pointsArray)
+           .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
+           .append("circle")
+           .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+           .attr("cy", point => yScale(point.y))
+           .attr("r", pointRadius)
+           .on("mouseover", mouseOverPointHandler) //setting event handlers
+           .on("mouseout", mouseOutPointHandler)
+           .on("click", clickOnPointHandler)
+           .on("contextmenu", rightClickOnPointHandler)
+           .exit();
+
         if(drawLines === true && pointsArray.length >= 3){
             d3.selectAll(".graphline").remove();  //delete all old lines
             for(let i = 0; i < pointsArray.length; i++) {
@@ -112,6 +119,40 @@
                     .attr("y2", yScale(nextPoint.y));    // y position of the second end of the line
             }
         }
+
+        for(let i = 0; i < offsetPointsArray.length; i++) {
+            const point = pointsArray[i];
+            const offsetPoint = offsetPointsArray[i];
+            const nextOffsetPoint = (i === offsetPointsArray.length - 1) ? offsetPointsArray[0] : offsetPointsArray[i+1];
+            if (point.x != offsetPoint.x ||
+                point.y != offsetPoint.y) {
+
+                svg.append("circle")
+                   .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
+                   .attr("cy", yScale(offsetPoint.y))
+                   .attr("r", pointRadius)
+                   .attr("fill", "blue");
+
+                svg.append("line")
+                   .style("stroke", "red")
+                   .attr("class", "graphline")
+                   .attr("x1", xScale(point.x))
+                   .attr("y1", yScale(point.y))
+                   .attr("x2", xScale(offsetPoint.x))
+                   .attr("y2", yScale(offsetPoint.y));
+
+                if (offsetPointsArray.length > 1) {
+                    svg.append("line")
+                       .style("stroke", "blue")
+                       .attr("class", "graphline")
+                       .attr("x1", xScale(nextOffsetPoint.x))
+                       .attr("y1", yScale(nextOffsetPoint.y))
+                       .attr("x2", xScale(offsetPoint.x))
+                       .attr("y2", yScale(offsetPoint.y));
+                }
+            }
+        }
+
     }
 
     // On click, we want to add data to the array and chart
@@ -124,7 +165,10 @@
             y: Math.round( yScale.invert(coords[1]))
         };
 
+        const offsetPoint = Object.create(newPoint);
+
         pointsArray.push(newPoint);   // Push data to our array
+        offsetPointsArray.push(offsetPoint);
 
         drawPoints();
 
@@ -140,6 +184,15 @@
         }
     }
 
+    function rightClickOnSvgHandler() {
+        d3.event.preventDefault();
+        d3.event.stopPropagation();
+        const coords = d3.mouse(this);
+        selectedOffsetPoint.x = Math.round( xScale.invert(coords[0]));
+        selectedOffsetPoint.y = Math.round( yScale.invert(coords[1]));
+        drawPoints(true);
+    }
+
     function clickOnPointHandler(point) { //creating a line between the last point and the first point
         d3.event.stopPropagation();  //otherwise svg will receive click and create a new point
         if(pointsArray.length >= 3) {
@@ -153,6 +206,18 @@
                 .attr("x2", xScale(firstPoint.x))     // x position of the second end of the line
                 .attr("y2", yScale(firstPoint.y));    // y position of the second end of the line
         }
+    }
+
+    function rightClickOnPointHandler(point, index) {
+        d3.event.preventDefault();
+        d3.event.stopPropagation();
+
+        d3.select(this)
+          .attr("fill", "red")
+          .attr("r", pointRadius * 3);
+
+        selectedPoint = point;
+        selectedOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
     }
 
     function getPointStringId(point) {
@@ -198,11 +263,29 @@
             else
                 console.log("The file was saved!");
         });
+
+
+        // Calc and save offsets
+        outputString = "";
+        for(let i = 0; i < offsetPointsArray.length; i++) {
+            const point = pointsArray[i];
+            const offsetPoint = offsetPointsArray[i];
+            outputString += i + " " + (offsetPoint.x - point.x) + " " + (offsetPoint.y - point.y);
+            if(i !== offsetPointsArray.length - 1)
+                outputString += "\n";
+        }
+
+        fs.writeFile("src_constraints.txt", outputString, function(err) {
+            if(err)
+                console.log(err);
+            else
+                console.log("The offset file was saved!");
+        });
     }
 
     function loadFromFile() {
-        const contents = fs.readFileSync('src_data.txt', 'utf8');
-        const lines = contents.split("\n");
+        contents = fs.readFileSync('src_data.txt', 'utf8');
+        lines = contents.split("\n");
         let newPointsArray = [];
         for(let i=0; i<lines.length; i++){
             const line = lines[i];
@@ -213,7 +296,24 @@
                 newPointsArray.push({x: x, y: y});
             }
         }
+
         pointsArray = newPointsArray;
+
+        // Load offsets into offset points array
+        contents = fs.readFileSync('src_constraints.txt', 'utf8');
+        lines = contents.split("\n");
+        offsetPointsArray = [];
+        for(let i = 0; i < lines.length; i++) {
+            const point = pointsArray[i];
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const x = point.x + parseFloat(numbersAsString[1]);
+            const y = point.y + parseFloat(numbersAsString[2]);
+            if (isFinite(x) && isFinite(y)) {
+                offsetPointsArray.push({x: x, y: y});
+            }
+        }
+
         drawPoints(true); //draw new points and lines
     }
 
