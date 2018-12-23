@@ -25,6 +25,7 @@
 <div class="container">
 <button class="button is-primary" id="save-to-file-btn" onclick="saveToFile()">Сохранить в файл</button>
 <button class="button is-primary" id="load-from-file-btn" onclick="loadFromFile()">Загрузить из файла</button>
+<button class="button is-primary" id="triangle-mode-btn" onclick="changeMode()">Триангуляция</button>
 <button class="button is-warning" id="clear-btn" onclick="clearGraph()">Очистить график</button>
 </div>
 <div class="container" id="d3"></div> <!-- container for our svg graph -->
@@ -52,7 +53,11 @@
     let pointsArray = [];  //our points, like [ {x:1.5, y:3}, {x:-2, y:0} ]
     let offsetPointsArray = [];
     let selectedPoint = null;
+    let prevSelectedPoint = null;
     let selectedOffsetPoint = null;
+    let trianglePoints = [];
+    let triangleContactPointNumbers = [];
+    var isTriangleMode = false;
 
     const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
         .domain([ xLeftBoundary, xRightBoundary ])    //boundaries of points' x coordinates
@@ -153,6 +158,37 @@
             }
         }
 
+        if (isTriangleMode) {
+
+            svg.selectAll("circle")
+                .data(trianglePoints)
+                .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
+                .append("circle")
+                .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+                .attr("cy", point => yScale(point.y))
+                .attr("r", pointRadius)
+                .attr("fill", "green")
+                .on("mouseover", mouseOverPointHandler) //setting event handlers
+                .on("mouseout", mouseOutPointHandler)
+                .on("click", clickOnPointHandler)
+                .on("contextmenu", rightClickOnPointHandler)
+                .exit();
+
+            for (let i = 0; i<triangleContactPointNumbers.length; i++) {
+                for (let j = 0; j<triangleContactPointNumbers[i].length; j++) {
+                    let trianglePoint = trianglePoints[i];
+                    let point = pointsArray[triangleContactPointNumbers[i][j]];
+                    svg.append("line")
+                        .style("stroke", "green")
+                        .attr("class", "graphline")
+                        .attr("x1", xScale(trianglePoint.x))
+                        .attr("y1", yScale(trianglePoint.y))
+                        .attr("x2", xScale(point.x))
+                        .attr("y2", yScale(point.y));
+                }
+            }
+        }
+
     }
 
     // On click, we want to add data to the array and chart
@@ -188,8 +224,21 @@
         d3.event.preventDefault();
         d3.event.stopPropagation();
         const coords = d3.mouse(this);
-        selectedOffsetPoint.x = Math.round( xScale.invert(coords[0]));
-        selectedOffsetPoint.y = Math.round( yScale.invert(coords[1]));
+
+        if (isTriangleMode) {
+            const newPoint= {
+                x: Math.round( xScale.invert(coords[0])),  // Takes the pixel number to convert to number
+                y: Math.round( yScale.invert(coords[1]))
+            };
+            trianglePoints.push(newPoint);
+            triangleContactPointNumbers.push([
+                pointsArray.indexOf(prevSelectedPoint),
+                pointsArray.indexOf(selectedPoint)
+            ])
+        } else {
+            selectedOffsetPoint.x = Math.round( xScale.invert(coords[0]));
+            selectedOffsetPoint.y = Math.round( yScale.invert(coords[1]));
+        }
         drawPoints(true);
     }
 
@@ -216,6 +265,7 @@
           .attr("fill", "red")
           .attr("r", pointRadius * 3);
 
+        prevSelectedPoint = selectedPoint;
         selectedPoint = point;
         selectedOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
     }
@@ -317,9 +367,19 @@
         drawPoints(true); //draw new points and lines
     }
 
+    function changeMode() {
+        isTriangleMode = !isTriangleMode;
+        document.getElementById("triangle-mode-btn").textContent = isTriangleMode ? "Нач. Условия" : "Триангуляция";
+        drawPoints(true)
+    }
+
     function clearGraph() {
         pointsArray = [];
         offsetPointsArray = [];
+        selectedPoint = null;
+        prevSelectedPoint = null;
+        trianglePoints = [];
+        triangleContactPointNumbers = [];
         d3.selectAll("circle").remove();
         d3.selectAll(".graphline").remove();
     }
