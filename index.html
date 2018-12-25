@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Hello World!</title>
+    <title>Plain strain task</title>
     <link rel="stylesheet" href="bulma.min.css">
     <style type="text/css">
         .axis path, .axis line {
@@ -54,10 +54,10 @@
     let offsetPointsArray = [];
     let selectedPoint = null;
     let prevSelectedPoint = null;
-    let selectedOffsetPoint = null;
+    let selectedCorrespondingOffsetPoint = null;
     let trianglePoints = [];
     let triangleContactPointNumbers = [];
-    var isTriangleMode = false;
+    let isTriangleMode = false;
 
     const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
         .domain([ xLeftBoundary, xRightBoundary ])    //boundaries of points' x coordinates
@@ -97,18 +97,18 @@
     function drawPoints(drawLines){  //if drawLines===true and we have at least 3 points, we draw lines around them
         d3.selectAll("circle").remove(); //delete all old points
 
-        svg.selectAll("circle")
+        svg.selectAll("circle.point")
            .data(pointsArray)
            .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
            .append("circle")
+           .attr("class", "point")
            .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
            .attr("cy", point => yScale(point.y))
            .attr("r", pointRadius)
-           .on("mouseover", mouseOverPointHandler) //setting event handlers
-           .on("mouseout", mouseOutPointHandler)
+           .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+           .on("mouseout", mouseOutAnyPointHandler)
            .on("click", clickOnPointHandler)
-           .on("contextmenu", rightClickOnPointHandler)
-           .exit();
+           .on("contextmenu", rightClickOnPointHandler);
 
         if(drawLines === true && pointsArray.length >= 3){
             d3.selectAll(".graphline").remove();  //delete all old lines
@@ -128,15 +128,28 @@
         for(let i = 0; i < offsetPointsArray.length; i++) {
             const point = pointsArray[i];
             const offsetPoint = offsetPointsArray[i];
-            const nextOffsetPoint = (i === offsetPointsArray.length - 1) ? offsetPointsArray[0] : offsetPointsArray[i+1];
-            if (point.x != offsetPoint.x ||
-                point.y != offsetPoint.y) {
+            if(offsetPoint == null)
+                continue;
 
-                svg.append("circle")
-                   .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
-                   .attr("cy", yScale(offsetPoint.y))
-                   .attr("r", pointRadius)
-                   .attr("fill", "blue");
+            let nextAnyPoint = (i === offsetPointsArray.length - 1) ? offsetPointsArray[0] : offsetPointsArray[i+1];
+            if(nextAnyPoint == null)
+                nextAnyPoint = (i === pointsArray.length - 1) ? pointsArray[0] : pointsArray[i+1];
+
+            let prevOffsetPoint = (i === 0) ? offsetPointsArray[offsetPointsArray.length - 1] : offsetPointsArray[i-1];
+            let prevPoint = (i === 0) ? pointsArray[offsetPointsArray.length - 1] : pointsArray[i-1];
+
+            if (point.x !== offsetPoint.x || point.y !== offsetPoint.y) {
+                svg.selectAll("circle.offsetpoint"+i)
+                    .data([offsetPoint])
+                    .enter()
+                    .append("circle")
+                    .attr("class", "offsetpoint"+i)
+                    .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
+                    .attr("cy", yScale(offsetPoint.y))
+                    .attr("r", pointRadius)
+                    .attr("fill", "blue")
+                    .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+                    .on("mouseout", mouseOutAnyPointHandler);
 
                 svg.append("line")
                    .style("stroke", "red")
@@ -146,20 +159,28 @@
                    .attr("x2", xScale(offsetPoint.x))
                    .attr("y2", yScale(offsetPoint.y));
 
-                if (offsetPointsArray.length > 1) {
+                if (drawLines === true && pointsArray.length >= 3) {
                     svg.append("line")
                        .style("stroke", "blue")
                        .attr("class", "graphline")
-                       .attr("x1", xScale(nextOffsetPoint.x))
-                       .attr("y1", yScale(nextOffsetPoint.y))
+                       .attr("x1", xScale(nextAnyPoint.x))
+                       .attr("y1", yScale(nextAnyPoint.y))
                        .attr("x2", xScale(offsetPoint.x))
                        .attr("y2", yScale(offsetPoint.y));
+                    if(prevOffsetPoint == null){
+                        svg.append("line")
+                            .style("stroke", "blue")
+                            .attr("class", "graphline")
+                            .attr("x1", xScale(prevPoint.x))
+                            .attr("y1", yScale(prevPoint.y))
+                            .attr("x2", xScale(offsetPoint.x))
+                            .attr("y2", yScale(offsetPoint.y));
+                    }
                 }
             }
         }
 
         if (isTriangleMode) {
-
             svg.selectAll("circle")
                 .data(trianglePoints)
                 .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
@@ -168,8 +189,8 @@
                 .attr("cy", point => yScale(point.y))
                 .attr("r", pointRadius)
                 .attr("fill", "green")
-                .on("mouseover", mouseOverPointHandler) //setting event handlers
-                .on("mouseout", mouseOutPointHandler)
+                .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+                .on("mouseout", mouseOutAnyPointHandler)
                 .on("click", clickOnPointHandler)
                 .on("contextmenu", rightClickOnPointHandler)
                 .exit();
@@ -188,7 +209,6 @@
                 }
             }
         }
-
     }
 
     // On click, we want to add data to the array and chart
@@ -201,12 +221,12 @@
             y: Math.round( yScale.invert(coords[1]))
         };
 
-        const offsetPoint = Object.create(newPoint);
+        const offsetPoint = null; //no constraints by default
 
         pointsArray.push(newPoint);   // Push data to our array
         offsetPointsArray.push(offsetPoint);
 
-        drawPoints();
+        drawPoints(false);
 
         if(pointsArray.length >= 2) {  // draw a line between the new point and the last point
             const prevPoint = pointsArray[pointsArray.length - 2];
@@ -236,8 +256,10 @@
                 pointsArray.indexOf(selectedPoint)
             ])
         } else {
-            selectedOffsetPoint.x = Math.round( xScale.invert(coords[0]));
-            selectedOffsetPoint.y = Math.round( yScale.invert(coords[1]));
+            if(selectedCorrespondingOffsetPoint != null) {
+                selectedCorrespondingOffsetPoint.x = Math.round(xScale.invert(coords[0]));
+                selectedCorrespondingOffsetPoint.y = Math.round(yScale.invert(coords[1]));
+            }
         }
         drawPoints(true);
     }
@@ -257,7 +279,7 @@
         }
     }
 
-    function rightClickOnPointHandler(point, index) {
+    function rightClickOnPointHandler(point) {
         d3.event.preventDefault();
         d3.event.stopPropagation();
 
@@ -267,15 +289,18 @@
 
         prevSelectedPoint = selectedPoint;
         selectedPoint = point;
-        selectedOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+        selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+        if(selectedCorrespondingOffsetPoint == null){
+            offsetPointsArray[pointsArray.indexOf(point)] = Object.create(point);
+            selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+        }
     }
 
     function getPointStringId(point) {
         return "t" + String(point.x).replace(".","-") + "-" + String(point.y).replace(".","-");
     }
 
-    function mouseOverPointHandler(point) {  // Add interactivity
-
+    function mouseOverAnyPointHandler(point) {  // Add interactivity
         // Use D3 to select element, change color and size
         d3.select(this)
             .attr("fill", "orange")
@@ -289,10 +314,11 @@
             .text( point.x + ", " + point.y );  // Value of the text
     }
 
-    function mouseOutPointHandler(point) {
+    function mouseOutAnyPointHandler(point) {
         // Use D3 to select element, change color back to normal
+        const color = (pointsArray.indexOf(point)===-1) ? "blue":"black";
         d3.select(this)
-            .attr("fill", "black")
+            .attr("fill", color)
             .attr("r", pointRadius);
 
         // Select text by id and then remove
@@ -318,12 +344,14 @@
         // Calc and save offsets
         outputString = "";
         for(let i = 0; i < offsetPointsArray.length; i++) {
-            const point = pointsArray[i];
             const offsetPoint = offsetPointsArray[i];
-            outputString += i + " " + (offsetPoint.x - point.x) + " " + (offsetPoint.y - point.y);
-            if(i !== offsetPointsArray.length - 1)
-                outputString += "\n";
+            if(offsetPoint == null)
+                continue;
+            outputString += i + " " + (offsetPoint.x) + " " + (offsetPoint.y) + "\n";
         }
+
+        if(outputString.length > 0)
+            outputString = outputString.slice(0, -1); //deleting last \n
 
         fs.writeFile("src_constraints.txt", outputString, function(err) {
             if(err)
@@ -334,33 +362,37 @@
     }
 
     function loadFromFile() {
-        contents = fs.readFileSync('src_data.txt', 'utf8');
-        lines = contents.split("\n");
-        let newPointsArray = [];
+        clearGraph();
+
+        let contents = fs.readFileSync('src_data.txt', 'utf8');
+        let lines = contents.split("\n");
+        pointsArray = [];
         for(let i=0; i<lines.length; i++){
             const line = lines[i];
             const numbersAsString = line.split(" ");
             const x = parseFloat(numbersAsString[0]);
             const y = parseFloat(numbersAsString[1]);
             if(isFinite(x) && isFinite(y)) {
-                newPointsArray.push({x: x, y: y});
+                pointsArray.push({x: x, y: y});
             }
         }
-
-        pointsArray = newPointsArray;
 
         // Load offsets into offset points array
         contents = fs.readFileSync('src_constraints.txt', 'utf8');
         lines = contents.split("\n");
+
         offsetPointsArray = [];
+        for(let i = 0; i < pointsArray.length; i++)
+            offsetPointsArray.push(null);
+
         for(let i = 0; i < lines.length; i++) {
-            const point = pointsArray[i];
             const line = lines[i];
             const numbersAsString = line.split(" ");
-            const x = point.x + parseFloat(numbersAsString[1]);
-            const y = point.y + parseFloat(numbersAsString[2]);
+            const point_i = parseInt(numbersAsString[0]);
+            const x = parseFloat(numbersAsString[1]);
+            const y = parseFloat(numbersAsString[2]);
             if (isFinite(x) && isFinite(y)) {
-                offsetPointsArray.push({x: x, y: y});
+                offsetPointsArray[point_i] = {x: x, y: y};
             }
         }
 
