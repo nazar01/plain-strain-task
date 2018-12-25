@@ -141,44 +141,42 @@
                 let prevOffsetPoint = (i === 0) ? offsetPointsArray[offsetPointsArray.length - 1] : offsetPointsArray[i-1];
                 let prevPoint = (i === 0) ? pointsArray[offsetPointsArray.length - 1] : pointsArray[i-1];
 
-                if (point.x !== offsetPoint.x || point.y !== offsetPoint.y) {
-                    svg.selectAll("circle.offsetpoint"+i)
-                        .data([offsetPoint])
-                        .enter()
-                        .append("circle")
-                        .attr("class", "offsetpoint"+i)
-                        .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
-                        .attr("cy", yScale(offsetPoint.y))
-                        .attr("r", pointRadius)
-                        .attr("fill", "blue")
-                        .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
-                        .on("mouseout", mouseOutAnyPointHandler);
+                svg.selectAll("circle.offsetpoint"+i)
+                    .data([offsetPoint])
+                    .enter()
+                    .append("circle")
+                    .attr("class", "offsetpoint"+i)
+                    .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
+                    .attr("cy", yScale(offsetPoint.y))
+                    .attr("r", pointRadius)
+                    .attr("fill", "blue")
+                    .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+                    .on("mouseout", mouseOutAnyPointHandler);
 
+                svg.append("line")
+                    .style("stroke", "red")
+                    .attr("class", "graphline")
+                    .attr("x1", xScale(point.x))
+                    .attr("y1", yScale(point.y))
+                    .attr("x2", xScale(offsetPoint.x))
+                    .attr("y2", yScale(offsetPoint.y));
+
+                if (drawLines === true && pointsArray.length >= 3) {
                     svg.append("line")
-                        .style("stroke", "red")
+                        .style("stroke", "blue")
                         .attr("class", "graphline")
-                        .attr("x1", xScale(point.x))
-                        .attr("y1", yScale(point.y))
+                        .attr("x1", xScale(nextAnyPoint.x))
+                        .attr("y1", yScale(nextAnyPoint.y))
                         .attr("x2", xScale(offsetPoint.x))
                         .attr("y2", yScale(offsetPoint.y));
-
-                    if (drawLines === true && pointsArray.length >= 3) {
+                    if(prevOffsetPoint == null){
                         svg.append("line")
                             .style("stroke", "blue")
                             .attr("class", "graphline")
-                            .attr("x1", xScale(nextAnyPoint.x))
-                            .attr("y1", yScale(nextAnyPoint.y))
+                            .attr("x1", xScale(prevPoint.x))
+                            .attr("y1", yScale(prevPoint.y))
                             .attr("x2", xScale(offsetPoint.x))
                             .attr("y2", yScale(offsetPoint.y));
-                        if(prevOffsetPoint == null){
-                            svg.append("line")
-                                .style("stroke", "blue")
-                                .attr("class", "graphline")
-                                .attr("x1", xScale(prevPoint.x))
-                                .attr("y1", yScale(prevPoint.y))
-                                .attr("x2", xScale(offsetPoint.x))
-                                .attr("y2", yScale(offsetPoint.y));
-                        }
                     }
                 }
             }
@@ -267,18 +265,28 @@
                 triangles.push([prevSelectedPoint, selectedPoint, point]);
                 prevSelectedPoint = null;
                 selectedPoint = null;
-                drawPoints(true);
             } else {
-                prevSelectedPoint = selectedPoint;
-                selectedPoint = point;
+                if(prevSelectedPoint !== selectedPoint) {
+                    prevSelectedPoint = selectedPoint;
+                    selectedPoint = point;
+                }
             }
         } else {
-            selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
-            if (selectedCorrespondingOffsetPoint == null) {
-                offsetPointsArray[pointsArray.indexOf(point)] = Object.create(point);
-                selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+            let justClickedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+            if (justClickedCorrespondingOffsetPoint == null) {
+                justClickedCorrespondingOffsetPoint = {x: point.x, y: point.y};
+                offsetPointsArray[pointsArray.indexOf(point)] = justClickedCorrespondingOffsetPoint;
+                selectedCorrespondingOffsetPoint = justClickedCorrespondingOffsetPoint;
+            } else {
+                if (justClickedCorrespondingOffsetPoint === selectedCorrespondingOffsetPoint) {
+                    selectedCorrespondingOffsetPoint.x = point.x;
+                    selectedCorrespondingOffsetPoint.y = point.y;
+                } else {
+                    selectedCorrespondingOffsetPoint = justClickedCorrespondingOffsetPoint;
+                }
             }
         }
+        drawPoints(true);
     }
 
     function mouseOverAnyPointHandler(point) {  // Add interactivity
@@ -453,10 +461,13 @@
         offsetPointsArray = [];
         selectedPoint = null;
         prevSelectedPoint = null;
+        selectedCorrespondingOffsetPoint = null;
         triangulatedPoints = [];
         triangles = [];
+
         d3.selectAll("circle").remove();
         d3.selectAll(".graphline").remove();
+        d3.selectAll("text.hint").remove();
     }
 </script>
 </body>
