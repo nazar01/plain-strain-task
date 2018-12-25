@@ -21,12 +21,21 @@
     </style>
 </head>
 <body>
-<section class="section">
+<div class="tabs">
+    <ul>
+        <li class="is-active"><a>Задание области</a></li>
+        <li><a href="visualizing.html">Визуализация результатов</a></li>
+    </ul>
+</div>
+<section class="section" style="padding-top: 0">
 <div class="container">
-<button class="button is-primary" id="save-to-file-btn" onclick="saveToFile()">Сохранить в файл</button>
-<button class="button is-primary" id="load-from-file-btn" onclick="loadFromFile()">Загрузить из файла</button>
-<button class="button is-primary" id="triangle-mode-btn" onclick="changeMode()">Триангуляция</button>
+<button class="button is-primary" onclick="saveToFile()">Сохранить в файл точки и нач.усл.</button>
+<button class="button is-primary" onclick="loadFromFile()">Загрузить из файла точки и нач.усл.</button>
 <button class="button is-warning" id="clear-btn" onclick="clearGraph()">Очистить график</button>
+</div>
+<div class="container" style="margin-top: 10px">
+    <button class="button is-primary" onclick="saveTrianglesToFile()">Сохранить в файл триангуляцию</button>
+    <button class="button is-info" id="triangle-mode-btn" onclick="changeMode()">Вкл. триангуляцию</button>
 </div>
 <div class="container" id="d3"></div> <!-- container for our svg graph -->
 </section>
@@ -55,8 +64,8 @@
     let selectedPoint = null;
     let prevSelectedPoint = null;
     let selectedCorrespondingOffsetPoint = null;
-    let trianglePoints = [];
-    let triangleContactPointNumbers = [];
+    let triangulatedPoints = [];
+    let triangles = [];
     let isTriangleMode = false;
 
     const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
@@ -108,7 +117,7 @@
            .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
            .on("mouseout", mouseOutAnyPointHandler)
            .on("click", clickOnPointHandler)
-           .on("contextmenu", rightClickOnPointHandler);
+           .on("contextmenu", rightClickOnPointOrTriangulatedPointHandler);
 
         if(drawLines === true && pointsArray.length >= 3){
             d3.selectAll(".graphline").remove();  //delete all old lines
@@ -125,87 +134,99 @@
             }
         }
 
-        for(let i = 0; i < offsetPointsArray.length; i++) {
-            const point = pointsArray[i];
-            const offsetPoint = offsetPointsArray[i];
-            if(offsetPoint == null)
-                continue;
-
-            let nextAnyPoint = (i === offsetPointsArray.length - 1) ? offsetPointsArray[0] : offsetPointsArray[i+1];
-            if(nextAnyPoint == null)
-                nextAnyPoint = (i === pointsArray.length - 1) ? pointsArray[0] : pointsArray[i+1];
-
-            let prevOffsetPoint = (i === 0) ? offsetPointsArray[offsetPointsArray.length - 1] : offsetPointsArray[i-1];
-            let prevPoint = (i === 0) ? pointsArray[offsetPointsArray.length - 1] : pointsArray[i-1];
-
-            if (point.x !== offsetPoint.x || point.y !== offsetPoint.y) {
-                svg.selectAll("circle.offsetpoint"+i)
-                    .data([offsetPoint])
-                    .enter()
-                    .append("circle")
-                    .attr("class", "offsetpoint"+i)
-                    .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
-                    .attr("cy", yScale(offsetPoint.y))
-                    .attr("r", pointRadius)
-                    .attr("fill", "blue")
-                    .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
-                    .on("mouseout", mouseOutAnyPointHandler);
-
-                svg.append("line")
-                   .style("stroke", "red")
-                   .attr("class", "graphline")
-                   .attr("x1", xScale(point.x))
-                   .attr("y1", yScale(point.y))
-                   .attr("x2", xScale(offsetPoint.x))
-                   .attr("y2", yScale(offsetPoint.y));
-
-                if (drawLines === true && pointsArray.length >= 3) {
-                    svg.append("line")
-                       .style("stroke", "blue")
-                       .attr("class", "graphline")
-                       .attr("x1", xScale(nextAnyPoint.x))
-                       .attr("y1", yScale(nextAnyPoint.y))
-                       .attr("x2", xScale(offsetPoint.x))
-                       .attr("y2", yScale(offsetPoint.y));
-                    if(prevOffsetPoint == null){
-                        svg.append("line")
-                            .style("stroke", "blue")
-                            .attr("class", "graphline")
-                            .attr("x1", xScale(prevPoint.x))
-                            .attr("y1", yScale(prevPoint.y))
-                            .attr("x2", xScale(offsetPoint.x))
-                            .attr("y2", yScale(offsetPoint.y));
-                    }
-                }
-            }
-        }
-
         if (isTriangleMode) {
-            svg.selectAll("circle")
-                .data(trianglePoints)
-                .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
+            svg.selectAll("circle.triangulated")
+                .data(triangulatedPoints)
+                .enter()
                 .append("circle")
-                .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+                .attr("class", "triangulated")
+                .attr("cx", point => xScale(point.x))
                 .attr("cy", point => yScale(point.y))
                 .attr("r", pointRadius)
                 .attr("fill", "green")
-                .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+                .on("mouseover", mouseOverAnyPointHandler)
                 .on("mouseout", mouseOutAnyPointHandler)
-                .on("click", clickOnPointHandler)
-                .on("contextmenu", rightClickOnPointHandler)
-                .exit();
+                .on("contextmenu", rightClickOnPointOrTriangulatedPointHandler);
 
-            for (let i = 0; i<triangleContactPointNumbers.length; i++) {
-                for (let j = 0; j<triangleContactPointNumbers[i].length; j++) {
-                    let trianglePoint = trianglePoints[i];
-                    let point = pointsArray[triangleContactPointNumbers[i][j]];
+            let drawnLines = [];
+            for (let i = 0; i<triangles.length; i++) {
+                const drawLine = (p1, p2) => {
+                    const p1id = "p"+p1.x+"_"+p1.y;
+                    const p2id = "p"+p2.x+"_"+p2.y;
+                    console.log("drawLine called with "+p1id+" and "+p2id);
+                    if(drawnLines[p1id]==null || drawnLines[p1id][p2id]==null) {
+                        svg.append("line").style("stroke", "green").attr("class", "graphline")
+                            .attr("x1", xScale(p1.x)).attr("y1", yScale(p1.y))
+                            .attr("x2", xScale(p2.x)).attr("y2", yScale(p2.y));
+                        if (drawnLines[p1id] == null)
+                            drawnLines[p1id] = [];
+                        drawnLines[p1id][p2id] = true;
+                        if (drawnLines[p2id] == null)
+                            drawnLines[p2id] = [];
+                        drawnLines[p2id][p1id] = true;
+                    }
+                };
+                drawLine(triangles[i][0], triangles[i][1]);
+                drawLine(triangles[i][1], triangles[i][2]);
+                drawLine(triangles[i][2], triangles[i][0]);
+            }
+        } else {
+            drawOffsetPoints();
+        }
+
+        function drawOffsetPoints() {
+            for(let i = 0; i < offsetPointsArray.length; i++) {
+                const point = pointsArray[i];
+                const offsetPoint = offsetPointsArray[i];
+                if(offsetPoint == null)
+                    continue;
+
+                let nextAnyPoint = (i === offsetPointsArray.length - 1) ? offsetPointsArray[0] : offsetPointsArray[i+1];
+                if(nextAnyPoint == null)
+                    nextAnyPoint = (i === pointsArray.length - 1) ? pointsArray[0] : pointsArray[i+1];
+
+                let prevOffsetPoint = (i === 0) ? offsetPointsArray[offsetPointsArray.length - 1] : offsetPointsArray[i-1];
+                let prevPoint = (i === 0) ? pointsArray[offsetPointsArray.length - 1] : pointsArray[i-1];
+
+                if (point.x !== offsetPoint.x || point.y !== offsetPoint.y) {
+                    svg.selectAll("circle.offsetpoint"+i)
+                        .data([offsetPoint])
+                        .enter()
+                        .append("circle")
+                        .attr("class", "offsetpoint"+i)
+                        .attr("cx", xScale(offsetPoint.x)) // setting coordinates and radius for each point
+                        .attr("cy", yScale(offsetPoint.y))
+                        .attr("r", pointRadius)
+                        .attr("fill", "blue")
+                        .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+                        .on("mouseout", mouseOutAnyPointHandler);
+
                     svg.append("line")
-                        .style("stroke", "green")
+                        .style("stroke", "red")
                         .attr("class", "graphline")
-                        .attr("x1", xScale(trianglePoint.x))
-                        .attr("y1", yScale(trianglePoint.y))
-                        .attr("x2", xScale(point.x))
-                        .attr("y2", yScale(point.y));
+                        .attr("x1", xScale(point.x))
+                        .attr("y1", yScale(point.y))
+                        .attr("x2", xScale(offsetPoint.x))
+                        .attr("y2", yScale(offsetPoint.y));
+
+                    if (drawLines === true && pointsArray.length >= 3) {
+                        svg.append("line")
+                            .style("stroke", "blue")
+                            .attr("class", "graphline")
+                            .attr("x1", xScale(nextAnyPoint.x))
+                            .attr("y1", yScale(nextAnyPoint.y))
+                            .attr("x2", xScale(offsetPoint.x))
+                            .attr("y2", yScale(offsetPoint.y));
+                        if(prevOffsetPoint == null){
+                            svg.append("line")
+                                .style("stroke", "blue")
+                                .attr("class", "graphline")
+                                .attr("x1", xScale(prevPoint.x))
+                                .attr("y1", yScale(prevPoint.y))
+                                .attr("x2", xScale(offsetPoint.x))
+                                .attr("y2", yScale(offsetPoint.y));
+                        }
+                    }
                 }
             }
         }
@@ -246,15 +267,16 @@
         const coords = d3.mouse(this);
 
         if (isTriangleMode) {
-            const newPoint= {
-                x: Math.round( xScale.invert(coords[0])),  // Takes the pixel number to convert to number
-                y: Math.round( yScale.invert(coords[1]))
-            };
-            trianglePoints.push(newPoint);
-            triangleContactPointNumbers.push([
-                pointsArray.indexOf(prevSelectedPoint),
-                pointsArray.indexOf(selectedPoint)
-            ])
+            if(prevSelectedPoint!=null && selectedPoint!=null) {
+                const newPoint = {
+                    x: Math.round(xScale.invert(coords[0])),  // Takes the pixel number to convert to number
+                    y: Math.round(yScale.invert(coords[1]))
+                };
+                triangulatedPoints.push(newPoint);
+                triangles.push([prevSelectedPoint, selectedPoint, newPoint]);
+                prevSelectedPoint = null;
+                selectedPoint = null;
+            }
         } else {
             if(selectedCorrespondingOffsetPoint != null) {
                 selectedCorrespondingOffsetPoint.x = Math.round(xScale.invert(coords[0]));
@@ -279,7 +301,7 @@
         }
     }
 
-    function rightClickOnPointHandler(point) {
+    function rightClickOnPointOrTriangulatedPointHandler(point) {
         d3.event.preventDefault();
         d3.event.stopPropagation();
 
@@ -287,17 +309,23 @@
           .attr("fill", "red")
           .attr("r", pointRadius * 3);
 
-        prevSelectedPoint = selectedPoint;
-        selectedPoint = point;
-        selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
-        if(selectedCorrespondingOffsetPoint == null){
-            offsetPointsArray[pointsArray.indexOf(point)] = Object.create(point);
+        if(isTriangleMode) {
+            if(prevSelectedPoint!=null && selectedPoint!=null){
+                triangles.push([prevSelectedPoint, selectedPoint, point]);
+                prevSelectedPoint = null;
+                selectedPoint = null;
+                drawPoints(true);
+            } else {
+                prevSelectedPoint = selectedPoint;
+                selectedPoint = point;
+            }
+        } else {
             selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+            if (selectedCorrespondingOffsetPoint == null) {
+                offsetPointsArray[pointsArray.indexOf(point)] = Object.create(point);
+                selectedCorrespondingOffsetPoint = offsetPointsArray[pointsArray.indexOf(point)];
+            }
         }
-    }
-
-    function getPointStringId(point) {
-        return "t" + String(point.x).replace(".","-") + "-" + String(point.y).replace(".","-");
     }
 
     function mouseOverAnyPointHandler(point) {  // Add interactivity
@@ -308,7 +336,7 @@
 
         // Specify where to put label of text
         svg.append("text")
-            .attr("id", getPointStringId(point))  // Create an id for text so we can select it later for removing on mouseout
+            .attr("class", "hint")  // Create an id for text so we can select it later for removing on mouseout
             .attr("x", xScale(point.x) - 30 )
             .attr("y", yScale(point.y) - 15 )
             .text( point.x + ", " + point.y );  // Value of the text
@@ -316,13 +344,19 @@
 
     function mouseOutAnyPointHandler(point) {
         // Use D3 to select element, change color back to normal
-        const color = (pointsArray.indexOf(point)===-1) ? "blue":"black";
+        let color = "";
+        if(offsetPointsArray.indexOf(point)!==-1)
+            color = "blue";
+        else if(triangulatedPoints.indexOf(point)!==-1)
+            color = "green";
+        else
+            color = "black";
         d3.select(this)
             .attr("fill", color)
             .attr("r", pointRadius);
 
         // Select text by id and then remove
-        d3.select("#"+getPointStringId(point)).remove();  // Remove text location
+        d3.selectAll("text.hint").remove();  // Remove text location
     }
 
     function saveToFile() {
@@ -337,7 +371,7 @@
             if(err)
                 console.log(err);
             else
-                console.log("The file was saved!");
+                console.log("src_data.txt was saved!");
         });
 
 
@@ -357,7 +391,7 @@
             if(err)
                 console.log(err);
             else
-                console.log("The offset file was saved!");
+                console.log("src_constraints.txt was saved!");
         });
     }
 
@@ -399,10 +433,66 @@
         drawPoints(true); //draw new points and lines
     }
 
+    function saveTrianglesToFile() {
+        //points_renumbered.txt triangles_renumbered.txt
+        let outputString = String(pointsArray.length+triangulatedPoints.length)+"\n";
+        for(let i=0; i<pointsArray.length; i++){
+            const point = pointsArray[i];
+            outputString += point.x + " " + point.y+"\n";
+        }
+        for(let i=0; i<triangulatedPoints.length; i++){
+            const point = triangulatedPoints[i];
+            outputString += point.x + " " + point.y+"\n";
+        }
+
+        if(outputString.length > 0)
+            outputString = outputString.slice(0, -1); //deleting last \n
+
+        //actually not renumbered :)
+        fs.writeFile("points_renumbered.txt", outputString, function(err) {
+            if(err)
+                console.log(err);
+            else
+                console.log("points_renumbered.txt was saved!");
+        });
+
+        outputString = String(triangles.length)+"\n";
+        for(let i = 0; i < triangles.length; i++) {
+            const triangle = triangles[i];
+            function get_index(point){
+                const pointsArrayIndex = pointsArray.indexOf(point);
+                if(pointsArrayIndex === -1)
+                    return pointsArray.length-1+triangulatedPoints.indexOf(point);
+                else
+                    return pointsArrayIndex;
+            }
+            outputString += get_index(triangle[0]) + " " + get_index(triangle[1]) + " " + get_index(triangle[2]) + "\n";
+        }
+
+        if(outputString.length > 0)
+            outputString = outputString.slice(0, -1); //deleting last \n
+
+        fs.writeFile("triangles_renumbered.txt", outputString, function(err) {
+            if(err)
+                console.log(err);
+            else
+                console.log("triangles_renumbered.txt was saved!");
+        });
+    }
+
     function changeMode() {
         isTriangleMode = !isTriangleMode;
-        document.getElementById("triangle-mode-btn").textContent = isTriangleMode ? "Нач. Условия" : "Триангуляция";
-        drawPoints(true)
+        const button = document.getElementById("triangle-mode-btn");
+        if(isTriangleMode){
+            button.textContent = "Выкл. триангуляцию";
+            button.classList.add("is-warning");
+            button.classList.remove("is-info");
+        } else {
+            button.textContent = "Вкл. триангуляцию";
+            button.classList.remove("is-warning");
+            button.classList.add("is-info");
+        }
+        drawPoints(true);
     }
 
     function clearGraph() {
@@ -410,8 +500,8 @@
         offsetPointsArray = [];
         selectedPoint = null;
         prevSelectedPoint = null;
-        trianglePoints = [];
-        triangleContactPointNumbers = [];
+        triangulatedPoints = [];
+        triangles = [];
         d3.selectAll("circle").remove();
         d3.selectAll(".graphline").remove();
     }
