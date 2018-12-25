@@ -4,21 +4,7 @@
     <meta charset="UTF-8">
     <title>Plain strain task</title>
     <link rel="stylesheet" href="bulma.min.css">
-    <style type="text/css">
-        .axis path, .axis line {
-            fill: none;
-            stroke: black;
-            shape-rendering: crispEdges;  /* Round any decimal pixels so it'll render nicely */
-        }
-
-        .tick text{
-            font-size: 12px;
-        }
-
-        .tick line{
-            opacity: 0.2;
-        }
-    </style>
+    <link rel="stylesheet" href="main.css">
 </head>
 <body>
 <div class="tabs">
@@ -31,7 +17,7 @@
 <div class="container">
 <button class="button is-primary" onclick="saveToFile()">Сохранить в файл точки и нач.усл.</button>
 <button class="button is-primary" onclick="loadFromFile()">Загрузить из файла точки и нач.усл.</button>
-<button class="button is-warning" id="clear-btn" onclick="clearGraph()">Очистить график</button>
+<button class="button is-warning" onclick="clearGraph()">Очистить график</button>
 </div>
 <div class="container" style="margin-top: 10px">
     <button class="button is-primary" onclick="saveTrianglesToFile()">Сохранить в файл триангуляцию</button>
@@ -40,24 +26,24 @@
 <div class="container" id="d3"></div> <!-- container for our svg graph -->
 </section>
 <script>
-    const d3 = require("d3");  //library for graph
-    const fs = require('fs');  //API for filesystem operations from node.js
-
-    const svgWidth = window.innerWidth*0.7,
-          svgHeight = window.innerHeight*0.7,
-          svgMargin = { top: 40, right: 20, bottom: 20, left: 40 },
-          xLeftBoundary = -100,
-          xRightBoundary = 100,
-          yBottomBoundary = -100,
-          yTopBoundary = 100,
-          pointRadius = 3;
+    const d3 = require("d3"); //library for graph
+    const fs = require("fs"); //API for filesystem operations from node.js
+    const common = require("./common.js");
+    const {
+        svgWidth,
+        svgHeight,
+        pointRadius,
+        xScale,
+        yScale,
+        initAxes
+    } = common;
 
     const svg = d3.select("#d3")    //selecting our container from html
-                  .append("svg")    //this svg will contain our graph
-                  .attr("width", svgWidth)  //setting width and height attributes of svg
-                  .attr("height", svgHeight)
-                  .on("click", clickOnSvgHandler)  //setting click handler
-                  .on("contextmenu", rightClickOnSvgHandler);
+        .append("svg")    //this svg will contain our graph
+        .attr("width", svgWidth)  //setting width and height attributes of svg
+        .attr("height", svgHeight)
+        .on("click", clickOnSvgHandler)  //setting click handler
+        .on("contextmenu", rightClickOnSvgHandler);
 
     let pointsArray = [];  //our points, like [ {x:1.5, y:3}, {x:-2, y:0} ]
     let offsetPointsArray = [];
@@ -68,56 +54,23 @@
     let triangles = [];
     let isTriangleMode = false;
 
-    const xScale = d3.scaleLinear()  //this thing transform points coordinates to svg coordinates
-        .domain([ xLeftBoundary, xRightBoundary ])    //boundaries of points' x coordinates
-        .range([svgMargin.left, svgWidth - svgMargin.right]);   //boundaries of svg's x coordinates
-
-    const yScale = d3.scaleLinear()
-        .domain([ yBottomBoundary, yTopBoundary ])
-        .range([svgHeight - svgMargin.bottom, svgMargin.top]); //inverted to invert screen y axis
-
-    initAxes();
-
-    function initAxes(){
-        // Add an X and an Y Axis
-        const xAxis = d3.axisBottom(xScale)
-            .tickSizeInner(-(svgHeight-svgMargin.top-svgMargin.bottom)) //grid lines
-            .tickSizeOuter(0)
-            .tickPadding(10);
-
-        const yAxis = d3.axisLeft(yScale)
-            .tickSizeInner(-(svgWidth-svgMargin.left-svgMargin.right))  //grid lines
-            .tickSizeOuter(0)
-            .tickPadding(10);
-
-        // Adds X-Axis to svg as a 'g' element (group)
-        svg.append("g")
-            .attr("class", "axis")  // Give class so we can style it
-            .attr("transform", "translate(" + [0, svgHeight - svgMargin.bottom] + ")")  // Translate just moves it down into position (or will be on top)
-            .call(xAxis);
-
-        // Adds Y-Axis to svg as a 'g' element (group)
-        svg.append("g")
-            .attr("class", "axis")
-            .attr("transform", "translate(" + [svgMargin.left, 0] + ")")
-            .call(yAxis);
-    }
+    initAxes(svg);
 
     function drawPoints(drawLines){  //if drawLines===true and we have at least 3 points, we draw lines around them
         d3.selectAll("circle").remove(); //delete all old points
 
         svg.selectAll("circle.point")
-           .data(pointsArray)
-           .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
-           .append("circle")
-           .attr("class", "point")
-           .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
-           .attr("cy", point => yScale(point.y))
-           .attr("r", pointRadius)
-           .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
-           .on("mouseout", mouseOutAnyPointHandler)
-           .on("click", clickOnPointHandler)
-           .on("contextmenu", rightClickOnPointOrTriangulatedPointHandler);
+            .data(pointsArray)
+            .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
+            .append("circle")
+            .attr("class", "point")
+            .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+            .attr("cy", point => yScale(point.y))
+            .attr("r", pointRadius)
+            .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+            .on("mouseout", mouseOutAnyPointHandler)
+            .on("click", clickOnPointHandler)
+            .on("contextmenu", rightClickOnPointOrTriangulatedPointHandler);
 
         if(drawLines === true && pointsArray.length >= 3){
             d3.selectAll(".graphline").remove();  //delete all old lines
@@ -306,8 +259,8 @@
         d3.event.stopPropagation();
 
         d3.select(this)
-          .attr("fill", "red")
-          .attr("r", pointRadius * 3);
+            .attr("fill", "red")
+            .attr("r", pointRadius * 3);
 
         if(isTriangleMode) {
             if(prevSelectedPoint!=null && selectedPoint!=null){
@@ -459,13 +412,13 @@
         outputString = String(triangles.length)+"\n";
         for(let i = 0; i < triangles.length; i++) {
             const triangle = triangles[i];
-            function get_index(point){
+            const get_index = (point) => {
                 const pointsArrayIndex = pointsArray.indexOf(point);
                 if(pointsArrayIndex === -1)
                     return pointsArray.length-1+triangulatedPoints.indexOf(point);
                 else
                     return pointsArrayIndex;
-            }
+            };
             outputString += get_index(triangle[0]) + " " + get_index(triangle[1]) + " " + get_index(triangle[2]) + "\n";
         }
 

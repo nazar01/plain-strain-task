@@ -1,7 +1,7 @@
 {
   "name": "plain-strain-task",
   "version": "0.1.0",
-  "main": "main.js",
+  "main": "electron_main.js",
   "scripts": {
     "start": "electron ."
   },

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Plain strain task</title>
+    <link rel="stylesheet" href="bulma.min.css">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+<div class="tabs">
+    <ul>
+        <li><a href="index.html">Задание области</a></li>
+        <li class="is-active"><a>Визуализация результатов</a></li>
+    </ul>
+</div>
+<section class="section" style="padding-top: 0">
+<div class="container">
+<button class="button is-primary" onclick="loadFromFile()">Загрузить результаты работы программы</button>
+<button class="button is-warning" onclick="clearGraph()">Очистить график</button>
+</div>
+<div class="container" id="d3"></div> <!-- container for our svg graph -->
+</section>
+<script>
+    const d3 = require("d3"); //library for graph
+    const fs = require("fs"); //API for filesystem operations from node.js
+    const common = require("./common.js");
+    const {
+        svgWidth,
+        svgHeight,
+        pointRadius,
+        xScale,
+        yScale,
+        initAxes
+    } = common;
+
+    const svg = d3.select("#d3")    //selecting our container from html
+        .append("svg")    //this svg will contain our graph
+        .attr("width", svgWidth)  //setting width and height attributes of svg
+        .attr("height", svgHeight);
+
+    initAxes(svg);
+
+    function drawPoints(drawLines){  //if drawLines===true and we have at least 3 points, we draw lines around them
+        d3.selectAll("circle").remove(); //delete all old points
+
+        //write me
+    }
+
+    function mouseOverAnyPointHandler(point) {  // Add interactivity
+        // Use D3 to select element, change color and size
+        d3.select(this)
+            .attr("fill", "orange")
+            .attr("r", pointRadius * 2);
+
+        // Specify where to put label of text
+        svg.append("text")
+            .attr("class", "hint")  // Create an id for text so we can select it later for removing on mouseout
+            .attr("x", xScale(point.x) - 30 )
+            .attr("y", yScale(point.y) - 15 )
+            .text( point.x + ", " + point.y );  // Value of the text
+    }
+
+    function mouseOutAnyPointHandler(point) {
+        //write me
+    }
+
+    function loadFromFile() {
+        clearGraph();
+
+        // write me
+
+        drawPoints(true); //draw new points and lines
+    }
+
+    function clearGraph() {
+        d3.selectAll("circle").remove();
+        d3.selectAll(".graphline").remove();
+    }
+</script>
+</body>
+</html>

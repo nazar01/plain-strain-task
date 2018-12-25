@@ -1,0 +1,13 @@
+.axis path, .axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;  /* Round any decimal pixels so it'll render nicely */
+}
+
+.tick text{
+    font-size: 12px;
+}
+
+.tick line{
+    opacity: 0.2;
+}
