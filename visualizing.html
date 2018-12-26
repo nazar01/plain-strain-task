@@ -15,7 +15,8 @@
 </div>
 <section class="section" style="padding-top: 0">
 <div class="container">
-<button class="button is-primary" onclick="loadFromFile()">Загрузить результаты работы программы</button>
+<button class="button is-primary" onclick="loadSourcePoints()">Загрузить исходные точки</button>
+<button class="button is-primary" onclick="loadResults()">Загрузить результаты работы программы</button>
 <button class="button is-warning" onclick="clearGraph()">Очистить график</button>
 </div>
 <div class="container" id="d3"></div> <!-- container for our svg graph -->
@@ -40,10 +41,45 @@
 
     initAxes(svg);
 
-    function drawPoints(drawLines){  //if drawLines===true and we have at least 3 points, we draw lines around them
+    let pointsArray = [];
+    let triangles = [];
+
+    function drawPointsAndTriangles(){  //if drawLines===true and we have at least 3 points, we draw lines around them
         d3.selectAll("circle").remove(); //delete all old points
 
-        //write me
+        svg.selectAll("circle.point")
+            .data(pointsArray)
+            .enter()               // Kind of setting model, https://github.com/d3/d3-selection#selection_enter
+            .append("circle")
+            .attr("class", "point")
+            .attr("cx", point => xScale(point.x)) // setting coordinates and radius for each point
+            .attr("cy", point => yScale(point.y))
+            .attr("r", pointRadius)
+            .on("mouseover", mouseOverAnyPointHandler) //setting event handlers
+            .on("mouseout", mouseOutAnyPointHandler);
+
+        let drawnLines = [];
+        for (let i = 0; i<triangles.length; i++) {
+            const drawLine = (p1, p2) => {
+                const p1id = "p"+p1.x+"_"+p1.y;
+                const p2id = "p"+p2.x+"_"+p2.y;
+                console.log("drawLine called with "+p1id+" and "+p2id);
+                if(drawnLines[p1id]==null || drawnLines[p1id][p2id]==null) {
+                    svg.append("line").style("stroke", "green").attr("class", "graphline")
+                        .attr("x1", xScale(p1.x)).attr("y1", yScale(p1.y))
+                        .attr("x2", xScale(p2.x)).attr("y2", yScale(p2.y));
+                    if (drawnLines[p1id] == null)
+                        drawnLines[p1id] = [];
+                    drawnLines[p1id][p2id] = true;
+                    if (drawnLines[p2id] == null)
+                        drawnLines[p2id] = [];
+                    drawnLines[p2id][p1id] = true;
+                }
+            };
+            drawLine(triangles[i][0], triangles[i][1]);
+            drawLine(triangles[i][1], triangles[i][2]);
+            drawLine(triangles[i][2], triangles[i][0]);
+        }
     }
 
     function mouseOverAnyPointHandler(point) {  // Add interactivity
@@ -61,20 +97,87 @@
     }
 
     function mouseOutAnyPointHandler(point) {
-        //write me
+        d3.select(this)
+            .attr("fill", "black")
+            .attr("r", pointRadius);
+
+        // Select text by id and then remove
+        d3.selectAll("text.hint").remove();  // Remove text location
     }
 
-    function loadFromFile() {
+    function loadSourcePoints() {
         clearGraph();
 
-        // write me
+        let contents = fs.readFileSync('points_renumbered.txt', 'utf8');
+        let lines = contents.split("\n");
+        pointsArray = [];
+        for(let i=1; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const x = parseFloat(numbersAsString[0]);
+            const y = parseFloat(numbersAsString[1]);
+            if(isFinite(x) && isFinite(y)) {
+                pointsArray.push({x: x, y: y});
+            }
+        }
 
-        drawPoints(true); //draw new points and lines
+        contents = fs.readFileSync('triangles_renumbered.txt', 'utf8');
+        lines = contents.split("\n");
+        triangles = [];
+        for(let i=1; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const p1 = parseInt(numbersAsString[0]);
+            const p2 = parseInt(numbersAsString[1]);
+            const p3 = parseInt(numbersAsString[2]);
+            if(isFinite(p1) && isFinite(p2) && isFinite(p3)) {
+                triangles.push([pointsArray[p1], pointsArray[p2], pointsArray[p3]]);
+            }
+        }
+
+        drawPointsAndTriangles();
+    }
+
+    function loadResults() {
+        clearGraph();
+
+        let contents = fs.readFileSync('solved_u_v.txt', 'utf8');
+        let lines = contents.split("\n");
+        pointsArray = [];
+        for(let i=0; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const x = parseFloat(numbersAsString[0]);
+            const y = parseFloat(numbersAsString[1]);
+            if(isFinite(x) && isFinite(y)) {
+                pointsArray.push({x: x, y: y});
+            }
+        }
+
+        contents = fs.readFileSync('triangles_renumbered.txt', 'utf8');
+        lines = contents.split("\n");
+        triangles = [];
+        for(let i=1; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const p1 = parseInt(numbersAsString[0]);
+            const p2 = parseInt(numbersAsString[1]);
+            const p3 = parseInt(numbersAsString[2]);
+            if(isFinite(p1) && isFinite(p2) && isFinite(p3)) {
+                triangles.push([pointsArray[p1], pointsArray[p2], pointsArray[p3]]);
+            }
+        }
+
+        drawPointsAndTriangles();
     }
 
     function clearGraph() {
+        pointsArray = [];
+        triangles = [];
+
         d3.selectAll("circle").remove();
         d3.selectAll(".graphline").remove();
+        d3.selectAll("text.hint").remove();
     }
 </script>
 </body>
