@@ -46,12 +46,14 @@
         .on("contextmenu", rightClickOnSvgHandler);
 
     let pointsArray = [];  //our points, like [ {x:1.5, y:3}, {x:-2, y:0} ]
+
     let offsetPointsArray = [];
-    let selectedPoint = null;
-    let prevSelectedPoint = null;
     let selectedCorrespondingOffsetPoint = null;
+
     let triangulatedPoints = [];
     let triangles = [];
+    let selectedPoint = null;
+    let prevSelectedPoint = null;
     let isTriangleMode = false;
 
     initAxes(svg);
@@ -262,11 +264,13 @@
 
         if(isTriangleMode) {
             if(prevSelectedPoint!=null && selectedPoint!=null){
-                triangles.push([prevSelectedPoint, selectedPoint, point]);
-                prevSelectedPoint = null;
-                selectedPoint = null;
+                if(point !== prevSelectedPoint && point !== selectedPoint) {
+                    triangles.push([prevSelectedPoint, selectedPoint, point]);
+                    prevSelectedPoint = null;
+                    selectedPoint = null;
+                }
             } else {
-                if(prevSelectedPoint !== selectedPoint) {
+                if(point !== selectedPoint) {
                     prevSelectedPoint = selectedPoint;
                     selectedPoint = point;
                 }
