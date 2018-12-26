@@ -427,7 +427,7 @@
             const get_index = (point) => {
                 const pointsArrayIndex = pointsArray.indexOf(point);
                 if(pointsArrayIndex === -1)
-                    return pointsArray.length-1+triangulatedPoints.indexOf(point);
+                    return pointsArray.length+triangulatedPoints.indexOf(point);
                 else
                     return pointsArrayIndex;
             };
