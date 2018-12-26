@@ -399,7 +399,7 @@
     }
 
     function saveTrianglesToFile() {
-        //points_renumbered.txt triangles_renumbered.txt
+        //points_renumbered.txt triangles_renumbered.txt constraints.txt
         let outputString = String(pointsArray.length+triangulatedPoints.length)+"\n";
         for(let i=0; i<pointsArray.length; i++){
             const point = pointsArray[i];
@@ -443,6 +443,29 @@
             else
                 console.log("triangles_renumbered.txt was saved!");
         });
+
+        outputString = "";
+        let offsetsCount = 0;
+        for(let i = 0; i < offsetPointsArray.length; i++) {
+            const offsetPoint = offsetPointsArray[i];
+            if(offsetPoint == null)
+                continue;
+            outputString += i + " " + (offsetPoint.x) + " " + (offsetPoint.y) + "\n";
+            offsetsCount++;
+        }
+
+        if(outputString.length > 0)
+            outputString = outputString.slice(0, -1); //deleting last \n
+
+        outputString = String(offsetsCount)+"\n"+outputString;
+
+        fs.writeFile("constraints.txt", outputString, function(err) {
+            if(err)
+                console.log(err);
+            else
+                console.log("constraints.txt was saved!");
+        });
+
     }
 
     function changeMode() {
