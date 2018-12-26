@@ -139,7 +139,7 @@ int main()
     float poissonRatio, youngModulus;
 
     ifstream fin;
-    fin.open("poissonRatioAndYoungModulus.txt");
+    fin.open("../poissonRatioAndYoungModulus.txt");
     fin >> poissonRatio >> youngModulus;
     fin.close();
 
@@ -155,7 +155,7 @@ int main()
     // Далее мы читаем список с координатами узлов.
     // Сначала читаем количество узлов, затем задаем размер динамических векторов х и у.
     // Далее мы просто читаем координаты узлов в цикле, строка за строкой.
-    fin.open("points_renumbered.txt");
+    fin.open("../points_renumbered.txt");
     fin >> nodesCount;
     nodesX.resize(nodesCount);
     nodesY.resize(nodesCount);
@@ -169,7 +169,7 @@ int main()
     // Затем мы читаем список элементов.
     // Все то же самое, читаем количество элементов, а затем индексы узлов для каждого элемента:
     int elementCount;
-    fin.open("triangles_renumbered.txt");
+    fin.open("../triangles_renumbered.txt");
     fin >> elementCount;
 
     for (int i = 0; i < elementCount; ++i)
@@ -180,7 +180,7 @@ int main()
     }
     fin.close();
     //Далее читаем список закреплений. Все то же самое:
-    fin.open("constraints.txt");
+    fin.open("../constraints.txt");
     int constraintCount;
     fin >> constraintCount;
 
@@ -238,13 +238,14 @@ int main()
     Eigen::VectorXf displacements = solver.solve(f);
 
     ofstream fout;
-    fout.open("output.txt");
+
+    fout.open("../stiffness_matrix_and_f.txt");
     fout << 2 * nodesCount << endl << static_cast<const Eigen::SparseMatrixBase<Eigen::SparseMatrix<float> >&> (globalK) << endl << f;
     fout.close();
 
     std::cout << "Displacements vector:" << std::endl << displacements << std::endl;
 
-    fout.open("solved_u_v.txt");
+    fout.open("../solved_u_v.txt");
     for(int i = 0; i < displacements.size(); i++){
         if(i%2==0 && i!=0){
             fout<<endl;

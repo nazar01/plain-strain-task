@@ -332,7 +332,7 @@
             if(i !== pointsArray.length - 1)
                 outputString += "\n";
         }
-        fs.writeFile("src_data.txt", outputString, function(err) {
+        fs.writeFile("../src_data.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else
@@ -352,7 +352,7 @@
         if(outputString.length > 0)
             outputString = outputString.slice(0, -1); //deleting last \n
 
-        fs.writeFile("src_constraints.txt", outputString, function(err) {
+        fs.writeFile("../src_constraints.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else
@@ -363,7 +363,7 @@
     function loadFromFile() {
         clearGraph();
 
-        let contents = fs.readFileSync('src_data.txt', 'utf8');
+        let contents = fs.readFileSync('../src_data.txt', 'utf8');
         let lines = contents.split("\n");
         pointsArray = [];
         for(let i=0; i<lines.length; i++){
@@ -377,7 +377,7 @@
         }
 
         // Load offsets into offset points array
-        contents = fs.readFileSync('src_constraints.txt', 'utf8');
+        contents = fs.readFileSync('../src_constraints.txt', 'utf8');
         lines = contents.split("\n");
 
         offsetPointsArray = [];
@@ -414,7 +414,7 @@
             outputString = outputString.slice(0, -1); //deleting last \n
 
         //actually not renumbered :)
-        fs.writeFile("points_renumbered.txt", outputString, function(err) {
+        fs.writeFile("../points_renumbered.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else
@@ -437,7 +437,7 @@
         if(outputString.length > 0)
             outputString = outputString.slice(0, -1); //deleting last \n
 
-        fs.writeFile("triangles_renumbered.txt", outputString, function(err) {
+        fs.writeFile("../triangles_renumbered.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else
@@ -459,7 +459,7 @@
 
         outputString = String(offsetsCount)+"\n"+outputString;
 
-        fs.writeFile("constraints.txt", outputString, function(err) {
+        fs.writeFile("../constraints.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else

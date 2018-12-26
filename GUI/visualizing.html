@@ -108,7 +108,7 @@
     function loadSourcePoints() {
         clearGraph();
 
-        let contents = fs.readFileSync('points_renumbered.txt', 'utf8');
+        let contents = fs.readFileSync('../points_renumbered.txt', 'utf8');
         let lines = contents.split("\n");
         pointsArray = [];
         for(let i=1; i<lines.length; i++){
@@ -121,7 +121,7 @@
             }
         }
 
-        contents = fs.readFileSync('triangles_renumbered.txt', 'utf8');
+        contents = fs.readFileSync('../triangles_renumbered.txt', 'utf8');
         lines = contents.split("\n");
         triangles = [];
         for(let i=1; i<lines.length; i++){
@@ -141,7 +141,7 @@
     function loadResults() {
         clearGraph();
 
-        let contents = fs.readFileSync('solved_u_v.txt', 'utf8');
+        let contents = fs.readFileSync('../solved_u_v.txt', 'utf8');
         let lines = contents.split("\n");
         pointsArray = [];
         for(let i=0; i<lines.length; i++){
@@ -154,7 +154,7 @@
             }
         }
 
-        contents = fs.readFileSync('triangles_renumbered.txt', 'utf8');
+        contents = fs.readFileSync('../triangles_renumbered.txt', 'utf8');
         lines = contents.split("\n");
         triangles = [];
         for(let i=1; i<lines.length; i++){
