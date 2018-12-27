@@ -63,7 +63,6 @@
             const drawLine = (p1, p2) => {
                 const p1id = "p"+p1.x+"_"+p1.y;
                 const p2id = "p"+p2.x+"_"+p2.y;
-                console.log("drawLine called with "+p1id+" and "+p2id);
                 if(drawnLines[p1id]==null || drawnLines[p1id][p2id]==null) {
                     svg.append("line").style("stroke", "green").attr("class", "graphline")
                         .attr("x1", xScale(p1.x)).attr("y1", yScale(p1.y))
@@ -141,16 +140,30 @@
     function loadResults() {
         clearGraph();
 
-        let contents = fs.readFileSync('../solved_u_v.txt', 'utf8');
+        let contents = fs.readFileSync('../points_renumbered.txt', 'utf8');
         let lines = contents.split("\n");
         pointsArray = [];
-        for(let i=0; i<lines.length; i++){
+        for(let i=1; i<lines.length; i++){
             const line = lines[i];
             const numbersAsString = line.split(" ");
             const x = parseFloat(numbersAsString[0]);
             const y = parseFloat(numbersAsString[1]);
             if(isFinite(x) && isFinite(y)) {
                 pointsArray.push({x: x, y: y});
+            }
+        }
+
+        contents = fs.readFileSync('../solved_u_v.txt', 'utf8');
+        lines = contents.split("\n");
+        // pointsArray = [];
+        for(let i=0; i<lines.length; i++){
+            const line = lines[i];
+            const numbersAsString = line.split(" ");
+            const dx = parseFloat(numbersAsString[0]);
+            const dy = parseFloat(numbersAsString[1]);
+            if(isFinite(dx) && isFinite(dy)) {
+                pointsArray[i].x += dx;
+                pointsArray[i].y += dy;
             }
         }
 
