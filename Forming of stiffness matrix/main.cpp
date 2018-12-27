@@ -13,23 +13,23 @@
 using namespace std;
 struct Element
 {
-    void CalculateStiffnessMatrix(const Eigen::Matrix3f& D, vector<Eigen::Triplet<float> >& triplets);
+	void CalculateStiffnessMatrix(const Eigen::Matrix3f& D, vector<Eigen::Triplet<float> >& triplets);
 
-    Eigen::Matrix<float, 3, 6> B;
-    int nodesIds[3];
+	Eigen::Matrix<float, 3, 6> B;
+	int nodesIds[3];
 };
 
 struct Constraint
 {
-/*	enum Type
-	{
-		UX = 1 << 0,
-		UY = 1 << 1,
-		UXY = UX | UY
-	};*/
-    double x, y;
-    int node;
-//	Type type;
+	/*	enum Type
+		{
+			UX = 1 << 0,
+			UY = 1 << 1,
+			UXY = UX | UY
+		};*/
+	double x, y;
+	int node;
+	//	Type type;
 };
 
 /*
@@ -38,6 +38,7 @@ struct Constraint
 
 //Количество узлов
 int                         nodesCount;
+int                         noadsCount;
 //Вектор с х - координатой узлов
 Eigen::VectorXf             nodesX;
 //Вектор с y - координатой узлов
@@ -51,92 +52,94 @@ vector< Constraint >   constraints;
 
 void Element::CalculateStiffnessMatrix(const Eigen::Matrix3f& D, vector<Eigen::Triplet<float> >& triplets)
 {
-    Eigen::Vector3f x, y;
-    x << nodesX[nodesIds[0]], nodesX[nodesIds[1]], nodesX[nodesIds[2]];
-    y << nodesY[nodesIds[0]], nodesY[nodesIds[1]], nodesY[nodesIds[2]];
+	Eigen::Vector3f x, y;
+	x << nodesX[nodesIds[0]], nodesX[nodesIds[1]], nodesX[nodesIds[2]];
+	y << nodesY[nodesIds[0]], nodesY[nodesIds[1]], nodesY[nodesIds[2]];
 
-    Eigen::Matrix3f C;
-    C << Eigen::Vector3f(1.0f, 1.0f, 1.0f), x, y;
+	Eigen::Matrix3f C;
+	C << Eigen::Vector3f(1.0f, 1.0f, 1.0f), x, y;
 
-    Eigen::Matrix3f IC = C.inverse();
+	Eigen::Matrix3f IC = C.inverse();
 
-    for (int i = 0; i < 3; i++)
-    {
-        B(0, 2 * i + 0) = IC(1, i);
-        B(0, 2 * i + 1) = 0.0f;
-        B(1, 2 * i + 0) = 0.0f;
-        B(1, 2 * i + 1) = IC(2, i);
-        B(2, 2 * i + 0) = IC(2, i);
-        B(2, 2 * i + 1) = IC(1, i);
-    }
-    Eigen::Matrix<float, 6, 6> K = B.transpose() * D * B * C.determinant() / 2.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		B(0, 2 * i + 0) = IC(1, i);
+		B(0, 2 * i + 1) = 0.0f;
+		B(1, 2 * i + 0) = 0.0f;
+		B(1, 2 * i + 1) = IC(2, i);
+		B(2, 2 * i + 0) = IC(2, i);
+		B(2, 2 * i + 1) = IC(1, i);
+	}
+	Eigen::Matrix<float, 6, 6> K = B.transpose() * D * B * C.determinant() / 2.0f;
 
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            Eigen::Triplet<float> trplt11(2 * nodesIds[i] + 0, 2 * nodesIds[j] + 0, K(2 * i + 0, 2 * j + 0));
-            Eigen::Triplet<float> trplt12(2 * nodesIds[i] + 0, 2 * nodesIds[j] + 1, K(2 * i + 0, 2 * j + 1));
-            Eigen::Triplet<float> trplt21(2 * nodesIds[i] + 1, 2 * nodesIds[j] + 0, K(2 * i + 1, 2 * j + 0));
-            Eigen::Triplet<float> trplt22(2 * nodesIds[i] + 1, 2 * nodesIds[j] + 1, K(2 * i + 1, 2 * j + 1));
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			Eigen::Triplet<float> trplt11(2 * nodesIds[i] + 0, 2 * nodesIds[j] + 0, K(2 * i + 0, 2 * j + 0));
+			Eigen::Triplet<float> trplt12(2 * nodesIds[i] + 0, 2 * nodesIds[j] + 1, K(2 * i + 0, 2 * j + 1));
+			Eigen::Triplet<float> trplt21(2 * nodesIds[i] + 1, 2 * nodesIds[j] + 0, K(2 * i + 1, 2 * j + 0));
+			Eigen::Triplet<float> trplt22(2 * nodesIds[i] + 1, 2 * nodesIds[j] + 1, K(2 * i + 1, 2 * j + 1));
 
-            triplets.push_back(trplt11);
-            triplets.push_back(trplt12);
-            triplets.push_back(trplt21);
-            triplets.push_back(trplt22);
-        }
-    }
+			triplets.push_back(trplt11);
+			triplets.push_back(trplt12);
+			triplets.push_back(trplt21);
+			triplets.push_back(trplt22);
+		}
+	}
 }
 
 void SetConstraints(Eigen::SparseMatrix<float>::InnerIterator& it, int index)
 {
-    if (it.row() == index || it.col() == index)
-    {
-        it.valueRef() = it.row() == it.col() ? 1.0f : 0.0f;
-    }
+	if (it.row() == index || it.col() == index)
+	{
+		it.valueRef() = it.row() == it.col() ? 1.0f : 0.0f;
+	}
 }
 
 void ApplyConstraints(Eigen::SparseMatrix<float>& K, const vector<Constraint>& constraints)
 {
-    vector<int> indicesToConstraint;
+	vector<int> indicesToConstraint;
 
-    for (vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it)
-    {
-        //	if (it->type & Constraint::UX)
-        //	{
-        indicesToConstraint.push_back(2 * it->node + 0);
-        loads(2 * it->node + 0) = it->x;
-        //	}
-        //	if (it->type & Constraint::UY)
-        //{
-        indicesToConstraint.push_back(2 * it->node + 1);
-        loads(2 * it->node + 1) = it->y;
-        //}
+	for (vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it)
+	{
+		//	if (it->type & Constraint::UX)
+		//	{
+		indicesToConstraint.push_back(2 * it->node + 0);
+		loads(2 * it->node + 0) = it->x - nodesX[it->node];
+		//	}
+		//	if (it->type & Constraint::UY)
+			//{
+		indicesToConstraint.push_back(2 * it->node + 1);
+		loads(2 * it->node + 1) = it->y - nodesY[it->node];
+		//}
 
-    }
+	}
 
-    f = loads;
-    for (int k = 0; k < K.outerSize(); ++k)
-    {
-        Eigen::VectorXf  col_of_mat = K.col(k) * loads[k];
+	f = loads;
+	for (int k = 0; k < K.outerSize(); ++k)
+	{
+		Eigen::VectorXf  col_of_mat = K.col(k) * loads[k];
 
-        f -= col_of_mat;
-        for (vector<int>::iterator idit = indicesToConstraint.begin(); idit != indicesToConstraint.end(); ++idit)
-            f[*idit] = loads[*idit];
+		f -= col_of_mat;
+		for (vector<int>::iterator idit = indicesToConstraint.begin(); idit != indicesToConstraint.end(); ++idit)
+			f[*idit] = loads[*idit];
 
-        for (Eigen::SparseMatrix<float>::InnerIterator it(K, k); it; ++it)
-        {
-            for (vector<int>::iterator idit = indicesToConstraint.begin(); idit != indicesToConstraint.end(); ++idit)
-            {
-                SetConstraints(it, *idit);
-            }
-        }
-    }
+		for (Eigen::SparseMatrix<float>::InnerIterator it(K, k); it; ++it)
+		{
+
+			for (vector<int>::iterator idit = indicesToConstraint.begin(); idit != indicesToConstraint.end(); ++idit)
+			{
+				SetConstraints(it, *idit);
+			}
+		}
+	}
 }
 
 int main()
 {
-    float poissonRatio, youngModulus;
+
+	float poissonRatio, youngModulus;
 
     ifstream fin;
     fin.open("../poissonRatioAndYoungModulus.txt");
@@ -183,59 +186,57 @@ int main()
     fin.open("../constraints.txt");
     int constraintCount;
     fin >> constraintCount;
+	for (int i = 0; i < constraintCount; ++i)
+	{
+		Constraint constraint;
+		int type;
+		//Вводим координаты начальных условий
+		double x, y;
+		fin >> constraint.node >> x >> y;
+		//Предыдущие ограничения
+		/*constraint.type = static_cast<Constraint::Type>(type);*/
+		constraint.x = x;
+		constraint.y = y;
+		constraints.push_back(constraint);
+	}
 
-    for (int i = 0; i < constraintCount; ++i)
-    {
-        Constraint constraint;
-        int type;
-        //Вводим координаты начальных условий
-        double x, y;
-        fin >> constraint.node >> x >> y;
-        //Предыдущие ограничения
-        /*constraint.type = static_cast<Constraint::Type>(type);*/
-        constraint.x = x - nodesX[i];
-        constraint.y = y - nodesY[i];
-        constraints.push_back(constraint);
-    }
-    fin.close();
+	int loadsCount;
+	loads.resize(2 * nodesCount);
+	loads.setZero();
+	f.resize(2 * nodesCount);
+	f.setZero();
 
-//    int loadsCount;
-    loads.resize(2 * nodesCount);
-    loads.setZero();
-    f.resize(2 * nodesCount);
-    f.setZero();
-
-//    fin >> loadsCount;
+	//fin >> loadsCount;
 
 //	for (int i = 0; i < loadsCount; ++i)
-    //{
-    //	int node;
-    //	float x, y;
-    //	fin >> node >> x >> y;
-    //	loads[2 * node + 0] = x;
-    //	loads[2 * node + 1] = y;
-    //}
+	//{
+	//	int node;
+	//	float x, y;
+	//	fin >> node >> x >> y;
+	//	loads[2 * node + 0] = x;
+	//	loads[2 * node + 1] = y;
+	//}
 
-    //Для построения глобальной матрицы жесткости, нам понадобится вектор triplets. В цикле, мы пройдемся по каждому элементу и заполним этот вектор значениями матриц жесткости полученными от каждого элемента:
-    vector<Eigen::Triplet<float> > triplets;
-    for (vector<Element>::iterator it = elements.begin(); it != elements.end(); ++it)
-    {
-        it->CalculateStiffnessMatrix(D, triplets);
-    }
-    //Как уже упоминалось ранее, мы можем построить глобальную разреженную матрицу прямо из вектора triplets:
-    Eigen::SparseMatrix<float> globalK(2 * nodesCount, 2 * nodesCount);
-    globalK.setFromTriplets(triplets.begin(), triplets.end());
+	//Для построения глобальной матрицы жесткости, нам понадобится вектор triplets. В цикле, мы пройдемся по каждому элементу и заполним этот вектор значениями матриц жесткости полученными от каждого элемента:
+	vector<Eigen::Triplet<float> > triplets;
+	for (vector<Element>::iterator it = elements.begin(); it != elements.end(); ++it)
+	{
+		it->CalculateStiffnessMatrix(D, triplets);
+	}
+	//Как уже упоминалось ранее, мы можем построить глобальную разреженную матрицу прямо из вектора triplets:
+	Eigen::SparseMatrix<float> globalK(2 * nodesCount, 2 * nodesCount);
+	globalK.setFromTriplets(triplets.begin(), triplets.end());
 
-    ApplyConstraints(globalK, constraints);
-    cout << "Global stiffness matrix:\n";
-    cout << static_cast<const Eigen::SparseMatrixBase<Eigen::SparseMatrix<float> >&> (globalK) << endl;
+	ApplyConstraints(globalK, constraints);
+	cout << "Global stiffness matrix:\n";
+	cout << static_cast<const Eigen::SparseMatrixBase<Eigen::SparseMatrix<float> >&> (globalK) << endl;
 
-    cout << "Loads vector:" << endl << loads << endl << endl;
-    cout << "F vector:" << endl << f << endl << endl;
+	cout << "Loads vector:" << endl << loads << endl << endl;
+	cout << "F vector:" << endl << f << endl << endl;
 
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<float> > solver(globalK);
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<float> > solver(globalK);
 
-    Eigen::VectorXf displacements = solver.solve(f);
+	Eigen::VectorXf displacements = solver.solve(f);
 
     ofstream fout;
 
