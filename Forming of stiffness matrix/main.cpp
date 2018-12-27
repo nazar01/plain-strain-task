@@ -141,44 +141,51 @@ int main()
 
 	float poissonRatio, youngModulus;
 
-	ifstream fin;
-	fin.open("input.txt");
+    ifstream fin;
+    fin.open("../poissonRatioAndYoungModulus.txt");
+    fin >> poissonRatio >> youngModulus;
+    fin.close();
 
+    //Генерация матрицы упругости
+    Eigen::Matrix3f D;
+    D <<
+      1.0f, poissonRatio, 0.0f,
+            poissonRatio, 1.0, 0.0f,
+            0.0f, 0.0f, (1.0f - poissonRatio) / 2.0f;
 
-	fin >> poissonRatio >> youngModulus;
+    D *= youngModulus / (1.0f - pow(poissonRatio, 2.0f));
 
-	//Генерация матрицы упругости
-	Eigen::Matrix3f D;
-	D <<
-		1.0f, poissonRatio, 0.0f,
-		poissonRatio, 1.0, 0.0f,
-		0.0f, 0.0f, (1.0f - poissonRatio) / 2.0f;
+    // Далее мы читаем список с координатами узлов.
+    // Сначала читаем количество узлов, затем задаем размер динамических векторов х и у.
+    // Далее мы просто читаем координаты узлов в цикле, строка за строкой.
+    fin.open("../points_renumbered.txt");
+    fin >> nodesCount;
+    nodesX.resize(nodesCount);
+    nodesY.resize(nodesCount);
 
-	D *= youngModulus / (1.0f - pow(poissonRatio, 2.0f));
+    for (int i = 0; i < nodesCount; ++i)
+    {
+        fin >> nodesX[i] >> nodesY[i];
+    }
+    fin.close();
 
-	//Далее, мы читаем список с координатами узлов. Сначала читаем количество узлов, затем задаем размер динамических векторов х и у. Далее, мы просто читать координаты узлов в цикле, строка за строкой.
-	fin >> nodesCount;
-	nodesX.resize(nodesCount);
-	nodesY.resize(nodesCount);
+    // Затем мы читаем список элементов.
+    // Все то же самое, читаем количество элементов, а затем индексы узлов для каждого элемента:
+    int elementCount;
+    fin.open("../triangles_renumbered.txt");
+    fin >> elementCount;
 
-	for (int i = 0; i < nodesCount; ++i)
-	{
-		fin >> nodesX[i] >> nodesY[i];
-	}
-	//Затем, мы читаем список элементов. Все то-же самое, читаем количество элементов, а затем индексы узлов для каждого элемента:
-	int elementCount;
-	fin >> elementCount;
-
-	for (int i = 0; i < elementCount; ++i)
-	{
-		Element element;
-		fin >> element.nodesIds[0] >> element.nodesIds[1] >> element.nodesIds[2];
-		elements.push_back(element);
-	}
-	//Далее, читаем список закреплений. Все то же самое:
-	int constraintCount;
-	fin >> constraintCount;
-
+    for (int i = 0; i < elementCount; ++i)
+    {
+        Element element;
+        fin >> element.nodesIds[0] >> element.nodesIds[1] >> element.nodesIds[2];
+        elements.push_back(element);
+    }
+    fin.close();
+    //Далее читаем список закреплений. Все то же самое:
+    fin.open("../constraints.txt");
+    int constraintCount;
+    fin >> constraintCount;
 	for (int i = 0; i < constraintCount; ++i)
 	{
 		Constraint constraint;
