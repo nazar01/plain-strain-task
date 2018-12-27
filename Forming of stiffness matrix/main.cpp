@@ -193,8 +193,8 @@ int main()
         fin >> constraint.node >> x >> y;
         //Предыдущие ограничения
         /*constraint.type = static_cast<Constraint::Type>(type);*/
-        constraint.x = x;
-        constraint.y = y;
+        constraint.x = x - nodesX[i];
+        constraint.y = y - nodesY[i];
         constraints.push_back(constraint);
     }
     fin.close();
