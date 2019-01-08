@@ -217,7 +217,9 @@ int main()
 	//	loads[2 * node + 1] = y;
 	//}
 
-	//Для построения глобальной матрицы жесткости, нам понадобится вектор triplets. В цикле, мы пройдемся по каждому элементу и заполним этот вектор значениями матриц жесткости полученными от каждого элемента:
+	// Для построения глобальной матрицы жесткости нам понадобится вектор triplets.
+	// В цикле, мы пройдемся по каждому элементу и
+	// заполним этот вектор значениями матриц жесткости полученными от каждого элемента:
 	vector<Eigen::Triplet<float> > triplets;
 	for (vector<Element>::iterator it = elements.begin(); it != elements.end(); ++it)
 	{
@@ -246,14 +248,14 @@ int main()
 
     std::cout << "Displacements vector:" << std::endl << displacements << std::endl;
 
-    fout.open("../solved_u_v.txt");
-    for(int i = 0; i < displacements.size(); i++){
-        if(i%2==0 && i!=0){
-            fout<<endl;
-        }
-        fout << displacements[i] << " ";
-    }
-    fout.close();
+//    fout.open("../lib_solved_u_v.txt");
+//    for(int i = 0; i < displacements.size(); i++){
+//        if(i%2==0 && i!=0){
+//            fout<<endl;
+//        }
+//        fout << displacements[i] << " ";
+//    }
+//    fout.close();
 
     return 0;
 }
