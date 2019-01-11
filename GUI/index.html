@@ -332,11 +332,11 @@
             if(i !== pointsArray.length - 1)
                 outputString += "\n";
         }
-        fs.writeFile("../src_data.txt", outputString, function(err) {
+        fs.writeFile("../src_points.txt", outputString, function(err) {
             if(err)
                 console.log(err);
             else
-                console.log("src_data.txt was saved!");
+                console.log("src_points.txt was saved!");
         });
 
 
@@ -363,7 +363,7 @@
     function loadFromFile() {
         clearGraph();
 
-        let contents = fs.readFileSync('../src_data.txt', 'utf8');
+        let contents = fs.readFileSync('../src_points.txt', 'utf8');
         let lines = contents.split("\n");
         pointsArray = [];
         for(let i=0; i<lines.length; i++){
