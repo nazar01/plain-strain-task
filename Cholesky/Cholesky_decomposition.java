@@ -145,31 +145,34 @@ public class Cholesky_decomposition {
         input.useLocale(Locale.US);
         int size = input.nextInt();
         double[][] amax = read_matrix_from_file(input, size);
-        System.out.println("Matrix amax");
-        print_matrix(amax, size, size);
         int l = get_band(amax,size);
         double[][] a = convert_matrix(amax, size, l);
-        System.out.println("Matrix a");
-        print_matrix(a, size, l);
         double[] f = new double[size];
         for (int i = 0; i < size; i++) {
             f[i] = input.nextDouble();
         }
-        double[] x1;
+        double[][] a_start = new double[size][l];
+        for (int i = 0; i < size; i++) {
+            if (l >= 0) System.arraycopy(a[i], 0, a_start[i], 0, l);
+        }
+        double[] f_start = new double[size];
+        System.arraycopy(f, 0, f_start, 0, size);
+        double[] x;
         try {
-            x1 = Cholesky(a, f, size, l);
-            System.out.println("Vector x");
-            for (int i = 0; i < size; i++) {
-                System.out.print(x1[i] + " ");
-            }
-            System.out.println();
-            for (int i = 0; i < size; i++) {
-                System.out.print(round(x1[i], 4) + " ");
-            }
+            x = Cholesky(a, f, size, l);
             BufferedWriter outputWriter = new BufferedWriter(new FileWriter("../solved_u_v.txt"));
-            for (int i = 0; i < size; i=i+2) {
-                outputWriter.write(round(x1[i], 4) + " "+round(x1[i+1], 4)+"\n");
+            for (int i = 0; i < size; i = i + 2) {
+                outputWriter.write(round(x[i], 4) + " " + round(x[i + 1], 4) + "\n");
             }
+            outputWriter.close();
+            double[] f_measure = solve_f(a_start, x, size, l);
+            double precision_measure = 0;
+            for (int i = 0; i < size; i++) {
+                if (Math.abs(f_measure[i] - f_start[i]) > precision_measure)
+                    precision_measure = Math.abs(f_measure[i] - f_start[i]);
+            }
+            outputWriter = new BufferedWriter(new FileWriter("../Choletsky_precision_measure.txt"));
+            outputWriter.write(Double.toString(precision_measure));
             outputWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
