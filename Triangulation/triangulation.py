@@ -9,22 +9,22 @@ FIGURE_POINTS = []
 RESULT_POINTS = []
 RESULT_TRIAGLES=[]
 	
-def draw_points(points, color):
-	print(points)
-	x = []
-	y = []
-	for point in points:
-		x.append(point[0])
-		y.append(point[1])
-	x.append(points[0][0])
-	y.append(points[0][1])
-	plt.plot(x, y, color=color)
-	
-def draw_all():
-	for triangle in RESULT_TRIAGLES:
-		draw_points(triangle, 'black')
-	draw_points(FIGURE_POINTS, 'red')
-	plt.show()
+# def draw_points(points,color):
+# 	print(points)
+# 	x = []
+# 	y = []
+# 	for point in points:
+# 		x.append(point[0])
+# 		y.append(point[1])
+# 	x.append(points[0][0])
+# 	y.append(points[0][1])
+# 	plt.plot(x, y, color=color)
+#
+# def draw_all():
+# 	for triangle in RESULT_TRIAGLES:
+# 		draw_points(triangle, 'black')
+# 	draw_points(FIGURE_POINTS, 'red')
+# 	plt.show()
 	
 def get_vector(point_1, point_2):
 	return point_2 - point_1
@@ -70,7 +70,6 @@ def find_min_angle(next = None):
 
 def find_min_angles_list():
 	commonLen=len(FIGURE_POINTS)
-	min_angle = 361
 	angles_list = []
 	for i in range(0, commonLen):
 		start = FIGURE_POINTS[commonLen - 1 if (i == 0) else i - 1]
@@ -150,7 +149,8 @@ def check_intersection(point_a, point_b, length):
 					print('no intersection in try\n')
 			except:
 				print('no intersection in exception\n')
-				min_distance=0
+				if(((point_b[0] - point_a[0])/(point_c[0] - point_a[0]) == (point_b[1] - point_a[1])/(point_c[1] - point_a[1])) and ((point_b[0] - point_a[0])/(point_d[0] - point_a[0]) == (point_b[1] - point_a[1])/(point_d[1] - point_a[1]))):
+					min_distance=0
 	if(len(min_point) == 2):
 		print('MIN DIST INTERSECTION WITH: {} - {}, VALUE: {}'.format(min_point[0], min_point[1], min_distance))
 	else:
@@ -188,7 +188,7 @@ def solve_triangle(point_start, point_mid, point_end, coef):
 		
 def solve_figure(coef):
 	iteration = 0
-	while len(FIGURE_POINTS) > 3:
+	while ( len(FIGURE_POINTS) > 3):
 		print('FIGURE_POINTS: {}'.format(FIGURE_POINTS))
 		print('RESULT_TRIANGLES: {}'.format(RESULT_TRIAGLES))
 		iteration += 1
@@ -198,6 +198,7 @@ def solve_figure(coef):
 			print('Try process angle: {}'.format(angle_info))
 			if solve_triangle(np.array(angle_info[1][0]), np.array(angle_info[1][1]), np.array(angle_info[1][2]), coef):
 				break
+		# draw_all()
 	RESULT_TRIAGLES.append([FIGURE_POINTS[0], FIGURE_POINTS[1], FIGURE_POINTS[2]])
 	# draw_all()
 
@@ -207,7 +208,7 @@ def read_data_from(filename):
 	points=[]
 	for line in file.readlines():
 		split = line.split(sep=' ')
-		points.append([float(split[0]), float(split[1])])
+		points.append([float(split[0]),float(split[1])])
 	print('input points: {}'.format(points))
 	file.close()
 	return points
@@ -229,7 +230,7 @@ coef = 1
 #FIGURE_POINTS = list(reversed([[1,1], [1,10], [10,10], [10,7], [3, 5], [10,3], [10,1]]))
 #FIGURE_POINTS = list(reversed([[5,5], [5,10], [7,10], [7,5]]))
 #FIGURE_POINTS = list(reversed([[1,10], [2,15], [5,15], [6,10], [6,5], [5,0], [2,0], [1,5]]))
-###FIGURE_POINTS = list(reversed([[1,1], [1,5], [5,5], [5,10], [7,10], [7,5], [10,5], [10,1]]))
+#FIGURE_POINTS = list(reversed([[1,1], [1,5], [5,5], [5,10], [7,10], [7,5], [10,5], [10,1]]))
 #write_result('fig7.txt', list(map(lambda point: '{} {}'.format(point[0], point[1]),FIGURE_POINTS)))
 
 	
