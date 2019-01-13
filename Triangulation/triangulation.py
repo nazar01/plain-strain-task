@@ -138,8 +138,11 @@ def check_intersection(point_a, point_b, length):
 			M = [[A_1, B_1], [A_2, B_2]]
 			Y = [-C_1, -C_2]
 			try:
+				print('vector: {} {}, side: {} {}'.format(point_a, point_b, point_c, point_d))
 				solution = np.linalg.solve(M, Y)
-				if (solution[0] >= min(point_c[0], point_d[0])) and (solution[0] <= max(point_c[0], point_d[0])) and (solution[1] >= min(point_c[1], point_d[1])) and (solution[1] <= max(point_c[1], point_d[1])) and (solution[0] >= min(point_a[0], point_b[0])) and (solution[0] <= max(point_a[0], point_b[0])) and (solution[1] >= min(point_a[1], point_b[1])) and (solution[1] <= max(point_a[1], point_b[1])): 
+				print('solution: {}'.format(solution))
+				
+				if inSquare(solution, point_c, point_d) and inSquare(solution, point_a, point_b): 
 					vector_temp = get_vector(point_a, np.array(solution))
 					if np.linalg.norm(vector_temp) < min_distance:
 						min_distance = np.linalg.norm(vector_temp)
@@ -156,6 +159,17 @@ def check_intersection(point_a, point_b, length):
 	else:
 		print('NO INTERSECTIONS')              
 	return min_distance
+
+def inSquare(point, start, end):
+	epsilon = 0.000000000000001
+	minX=min(start[0], end[0])
+	maxX=max(start[0], end[0])
+	minY=min(start[1], end[1])
+	maxY=max(start[1], end[1])
+	return (point[0] >= minX or abs(point[0] - minX) < epsilon)\
+ and (point[0] <= maxX or abs(point[0] - maxX) < epsilon)\
+ and (point[1] >= minY or abs(point[1] - minY) < epsilon)\
+ and (point[1] <= maxY or abs(point[1] - maxY) < epsilon) 
 				
 
 def inside_point_vectors(a,b):
@@ -198,7 +212,7 @@ def solve_figure(coef):
 			print('Try process angle: {}'.format(angle_info))
 			if solve_triangle(np.array(angle_info[1][0]), np.array(angle_info[1][1]), np.array(angle_info[1][2]), coef):
 				break
-		# draw_all()
+		#draw_all()
 	RESULT_TRIAGLES.append([FIGURE_POINTS[0], FIGURE_POINTS[1], FIGURE_POINTS[2]])
 	# draw_all()
 
