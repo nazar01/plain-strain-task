@@ -194,7 +194,7 @@ public class Main {
 
     public static void renumberNodes(ArrayList<RenumberedNodes> renumberedNodes, ArrayList<Integer> newNodes) {
         for (int i = 0; i < newNodes.size(); i++) {
-            renumberedNodes.add(new RenumberedNodes(i, newNodes.get(i)));
+            renumberedNodes.add(new RenumberedNodes(i, newNodes.indexOf(i)));
         }
     }
 
