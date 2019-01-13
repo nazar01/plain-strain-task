@@ -95,7 +95,7 @@ def make_recess(point_start, point_mid, point_end, coef):
 	mid_e_vector = calc_mid_e_vector(e_vector_1, e_vector_2)
 	length = (np.linalg.norm(vector_1) + np.linalg.norm(vector_2))
 	mid_vector = list(calc_mid_vector(mid_e_vector, length, point_mid, coef))
-	min_distance = check_intersection(point_mid, mid_vector, length)
+	min_distance = check_intersection(point_mid, mid_vector, length, isConnect = False)
 	mid_vector = list(calc_mid_vector(mid_e_vector, min_distance, point_mid, coef))
 	
 	RESULT_TRIAGLES.append([list(point_start), list(point_mid), list(mid_vector)])
@@ -103,9 +103,12 @@ def make_recess(point_start, point_mid, point_end, coef):
 	
 	point_mid = list(point_mid)
 	index = FIGURE_POINTS.index(point_mid)
+	#if (mid_vector not in FIGURE_POINTS):
 	FIGURE_POINTS.insert(index, mid_vector)
-	RESULT_POINTS.append(mid_vector)
 	FIGURE_POINTS.remove(point_mid)
+	#if(mid_vector not in RESULT_POINTS):
+	RESULT_POINTS.append(mid_vector)
+		
 	return True
 
 	
@@ -113,7 +116,7 @@ def make_connect(point_start, point_mid, point_end, coef):
 	print('its connect')
 	temp_vector = get_vector(point_start, point_end)
 	length = np.linalg.norm(temp_vector)
-	min_distance = check_intersection(point_start, point_end, length)
+	min_distance = check_intersection(point_start, point_end, length, isConnect = True)
 
 	if min_distance == length:
 		print('success')
@@ -125,14 +128,16 @@ def make_connect(point_start, point_mid, point_end, coef):
 		print('Not success')
 		return False
 	
-def check_intersection(point_a, point_b, length):
+def check_intersection(point_a, point_b, length, isConnect):
 	commonLen=len(FIGURE_POINTS)
 	min_distance = length
 	min_point = []
 	for i in range(0, commonLen):
 		point_c = FIGURE_POINTS[i]
 		point_d = FIGURE_POINTS[0 if (i == commonLen - 1) else i + 1]
-		if (list(point_c) != list(point_a)) and (list(point_d) != list(point_a) and list(point_c) != list(point_b)) and (list(point_d) != list(point_b)):
+		if isConnect and (list(point_c) != list(point_a)) and (list(point_d) != list(point_a)\
+					 and list(point_c) != list(point_b)) and (list(point_d) != list(point_b))\
+					or not isConnect and (list(point_c) != list(point_a)) and (list(point_d) != list(point_a)):
 			A_1,B_1,C_1 = get_line_coefs(point_a, point_b)
 			A_2,B_2,C_2 = get_line_coefs(point_c, point_d)
 			M = [[A_1, B_1], [A_2, B_2]]
